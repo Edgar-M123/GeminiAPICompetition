@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "asd_support",
-    "slug": "asd_support",
+    "name": "front-end",
+    "slug": "front-end",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.asd_support"
+      "package": "com.anonymous.frontend"
     },
     "web": {
       "bundler": "metro",

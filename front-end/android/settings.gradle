@@ -1,4 +1,4 @@
-rootProject.name = 'asd_support'
+rootProject.name = 'front-end'
 
 dependencyResolutionManagement {
   versionCatalogs {

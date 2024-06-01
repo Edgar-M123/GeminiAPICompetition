@@ -1,4 +1,4 @@
-package com.anonymous.asd_support
+package com.anonymous.frontend
 
 import android.os.Build
 import android.os.Bundle
