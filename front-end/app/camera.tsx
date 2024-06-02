@@ -1,30 +1,64 @@
 import { Link } from "expo-router";
 import { Text, View } from "react-native";
 import React from "react";
-import "react-native-vision-camera"
-import { Camera, useFrameProcessor } from "react-native-vision-camera";
+import { Camera, useFrameProcessor, useCameraDevice, useCameraPermission, CameraRuntimeError } from "react-native-vision-camera";
 
-const frameProcessor = useFrameProcessor((frame) => {
-    'worklet'
-    console.log(`You're looking at a guy.`)
-  }, [])
 
 
 export default function CameraScreen() {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Link href= "./" style={{color: 'blue', textDecorationLine: 'underline'}}>Hello</Link>
-        <Text>This is the camera screen.</Text>
-        <View>
-            <Camera frameProcessor={frameProcessor}/>
-        </View>
-      </View>
-    );
-  }
+  
+  
+
+
+  // const device = useCameraDevice('back');
+  // const { hasPermission, requestPermission } = useCameraPermission();
+
+
+  // const frameProcessor = useFrameProcessor((frame) => {
+  //   'worklet'
+  //   console.log(`You're looking at a guy.`);
+  // }, []);
+  
+  const device = useCameraDevice('back')
+  const { hasPermission } = useCameraPermission()
+  
+  if (!hasPermission) { 
+    return requestPermission();
+  };
+
+  if (device == null) {
+    return console.log("no camera")
+  };
+
+
+  return (
+    <Camera
+      androidPreviewViewType="surface-view"
+      style={{flex: 1}}
+      device={device}
+      isActive={true}
+    />
+  )
+}
+  // return (
+  //     <View
+  //       style={{
+  //         flex: 2,
+  //         justifyContent: "center",
+  //         alignItems: "center",
+  //       }}
+  //     >
+  //       <Link href= "./" style={{color: 'blue', textDecorationLine: 'underline'}}>Hello</Link>
+  //       <Text>This is the camera screen.</Text>
+  //       <View>
+  //           <Camera 
+  //             isActive = {false}
+  //             device={device}
+  //             // frameProcessor={frameProcessor}
+  //             style = {{flex: 1}}
+  //             />
+  //       </View>
+  //     </View>
+  //   );
+  // }
   
