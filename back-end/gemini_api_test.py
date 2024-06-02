@@ -14,6 +14,7 @@ GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY) # configure library with your API key
 
 text_model = genai.GenerativeModel('gemini-1.5-flash') # initialize flash model
+text_pro_model = genai.GenerativeModel('gemini-1.5-pro') # initialize flash model
 json_model = genai.GenerativeModel('gemini-1.5-pro') # initialize pro model
 
 
@@ -69,4 +70,33 @@ response = json_model.generate_content(
 print("raw: ", response)
 print("text: ", response.text)
 print("json: ", json.loads(response.text))
+
+
+
+# providing video
+video_filename = "gemini-video2.mp4"
+
+print(f"Uploading file...")
+video_file = genai.upload_file(path=video_filename)
+print(f"Completed upload: {video_file.uri}")
+
+import time
+
+while video_file.state.name == "PROCESSING":
+    print('.', end='')
+    time.sleep(10)
+    video_file = genai.get_file(video_file.name)
+
+if video_file.state.name == "FAILED":
+  raise ValueError(video_file.state.name)
+
+
+text = "Is the person in this video looking at the screen?"
+
+response = text_pro_model.generate_content(contents=[text, video_file], request_options={"timeout": 600}) # text + png input
+print(response.text) # text output
+print(text_pro_model.count_tokens(contents=[text, video_file])) # count tokens used
+
+genai.delete_file(video_file.name)
+print(f'Deleted file {video_file.uri}')
 
