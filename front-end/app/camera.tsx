@@ -1,13 +1,37 @@
 import { Link } from "expo-router";
-import { Text, View, TextInput } from "react-native";
+import { Text, View, TextInput, Pressable } from "react-native";
 import React from "react";
 import { Camera, useFrameProcessor, useCameraDevice, useCameraPermission, CameraRuntimeError } from "react-native-vision-camera";
+import { firebase } from "@react-native-firebase/functions";
+
+
+
+interface firebaseFnResult {
+  data: {
+    text: string
+  }
+}
 
 
 
 export default function CameraScreen() {
   
-  const [msgText, updateText] = React.useState("")
+  const [msgText, updateText] = React.useState("");
+  const [fnReturnText, updateFnReturn] = React.useState("placeholder");
+
+
+  const testCloudFunction = async (textData: any) => {
+    console.log(textData);
+    console.log("Running cloud function");
+    const result = await firebase.functions().httpsCallable('on_call_example')(
+      {
+        text: textData
+      }
+    ) as  firebaseFnResult;
+    updateFnReturn(result.data.text);
+    console.log('Cloud function ran');
+    console.log("Cloud function result: ", result);
+  };
 
 
   // const device = useCameraDevice('back');
@@ -57,6 +81,14 @@ export default function CameraScreen() {
           frameProcessor={frameProcessor}
           />
         )}
+      </View>
+      <View style = {{flex: 1}}>
+        <Pressable style = {{padding: 10, borderWidth: 1}}
+          onPress={() => testCloudFunction(msgText)}
+        
+        >
+          <Text>{fnReturnText}</Text>
+        </Pressable>
       </View>
     </View>
   )

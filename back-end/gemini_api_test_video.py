@@ -128,13 +128,17 @@ while video_file.state.name == "PROCESSING":
 
 if video_file.state.name == "FAILED":
   raise ValueError(video_file.state.name)
+t2 = time.perf_counter()
+print(f"Video upload time taken: {t2-t1}")
+
 
 text = "Is the person in this video looking at the screen? Respond with 10 words or less."
 
+t1 = time.perf_counter()
 response = text_pro_model.generate_content(contents=[text, video_file], request_options={"timeout": 600}) # text + png input
 print(response.text) # text output
 t2 = time.perf_counter()
-print(f"Time taken: {t2-t1}")
+print(f"Response time taken: {t2-t1}")
 print(text_pro_model.count_tokens(contents=[text, video_file])) # count tokens used
 
 genai.delete_file(video_file.name)
