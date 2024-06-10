@@ -9,8 +9,15 @@ initialize_app()
 
 
 @https_fn.on_call()
-def on_call_example(req: https_fn.CallableRequest) -> any:
+def on_call_example(req: https_fn.CallableRequest) -> dict:
     
     final_str = "Hello World" + req.data['text']
 
     return {'text': final_str}
+
+
+
+@https_fn.on_call()
+def upload_video(req: https_fn.CallableRequest) -> any:
+
+    return

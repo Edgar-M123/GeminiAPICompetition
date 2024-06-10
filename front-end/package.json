@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
+    "@google-cloud/speech": "^6.6.0",
     "@react-native-firebase/app": "^20.1.0",
     "@react-native-firebase/functions": "^20.1.0",
     "@react-navigation/native": "^6.0.2",
@@ -29,6 +30,7 @@
     "expo-system-ui": "~3.0.4",
     "expo-web-browser": "~13.0.3",
     "firebase-tools": "^13.11.0",
+    "node-record-lpcm16": "^1.0.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-native": "0.74.1",
