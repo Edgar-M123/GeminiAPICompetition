@@ -3,7 +3,7 @@ import { Text, View, TextInput, Pressable, NativeModules } from "react-native";
 import React from "react";
 import { Camera, useFrameProcessor, useCameraDevice, useCameraPermission, useMicrophonePermission, CameraRuntimeError, CameraDevice } from "react-native-vision-camera";
 import { firebase } from "@react-native-firebase/functions";
-import transcribeAudio from '../utils/transcribeAudio';
+// import transcribeAudio from '../utils/transcribeAudio';
 
 
 

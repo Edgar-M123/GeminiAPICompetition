@@ -10,8 +10,13 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Link href= "./camera" style={{color: 'blue', textDecorationLine: 'underline'}}>Camera</Link>
       <Text>Index page</Text>
+      <View style={{padding: 10, borderWidth: 1}}>
+        <Link href= "./camera" style={{color: 'blue', textDecorationLine: 'underline'}}>Camera</Link>
+      </View>
+      <View style = {{padding: 10, borderWidth: 1}}>
+        <Link href= "./voiceTest" style={{color: 'blue', textDecorationLine: 'underline'}}>voice test</Link>
+      </View>
     </View>
   );
 }
