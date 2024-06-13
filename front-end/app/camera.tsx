@@ -1,9 +1,11 @@
 import { Link } from "expo-router";
 import { Text, View, TextInput, Pressable, NativeModules } from "react-native";
 import React from "react";
-import { Camera, useFrameProcessor, useCameraDevice, useCameraPermission, useMicrophonePermission, CameraRuntimeError, CameraDevice } from "react-native-vision-camera";
+import { Camera, useFrameProcessor, useCameraDevice, runAtTargetFps } from "react-native-vision-camera";
 import { firebase } from "@react-native-firebase/functions";
-// import transcribeAudio from '../utils/transcribeAudio';
+import { getCamPerms, getMicPerms } from '../utils/permissionReqs';
+import { _arrayBufferToBase64 } from '../utils/arrayBufferToB64'
+import { CropResult, crop } from "vision-camera-cropper"
 
 
 
@@ -13,30 +15,6 @@ interface firebaseFnResult {
   }
 }
 
-const getCamPerms = async (device: CameraDevice | undefined) => {
-  const cameraPermission = Camera.getCameraPermissionStatus();
-
-  if (cameraPermission == 'not-determined') { 
-    const newCameraPermission = await Camera.requestCameraPermission()
-  };
-  
-  if (device == null) {
-    return console.log("no camera")
-  };
-
-}
-const getMicPerms = (device: CameraDevice | undefined) => {
-  const { hasPermission, requestPermission } = useMicrophonePermission();
-  
-  if (!hasPermission) { 
-    return requestPermission();
-  };
-  
-  if (device == null) {
-    return console.log("no microphone")
-  };
-
-}
 
 const recordVideo = async (ref: React.RefObject<Camera>, state: string, updateState: React.Dispatch<React.SetStateAction<string>>) => {
   
@@ -90,22 +68,25 @@ export default function CameraScreen() {
     console.log("Cloud function result: ", result);
   };
 
-
-  // const device = useCameraDevice('back');
-  // const { hasPermission, requestPermission } = useCameraPermission();
-
-
-  const frameProcessor = useFrameProcessor((frame) => {
+    const frameProcessor = useFrameProcessor((frame) => {
     'worklet'
-    // console.log(`You're looking at a guy.`);
+    runAtTargetFps(2, () => {
+      'worklet'
+      const cropRegion = {
+        left:100,
+        top:100,
+        width:100,
+        height:100
+      }
+      const result: CropResult = crop(frame,{saveAsFile:true});
+      console.log(result.path);
+    })
   }, []);
   
   const device = useCameraDevice('back');
   
   getCamPerms(device);
   getMicPerms(device);
-
-
 
   return (
     <View style = {{flex: 1}}>
