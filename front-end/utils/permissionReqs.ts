@@ -1,4 +1,5 @@
 import { Camera, useMicrophonePermission, CameraDevice } from "react-native-vision-camera";
+import { Audio } from 'expo-av'
 
 
 export const getCamPerms = async (device: CameraDevice | undefined) => {
@@ -25,4 +26,19 @@ export const getMicPerms = (device: CameraDevice | undefined) => {
     if (device == null) {
       return console.log("no microphone")
     };
+}
+
+export const getAudioPerms = async() => {
+    
+  const [permissionResponse, requestPermission] = Audio.usePermissions();
+
+  try {
+    if (permissionResponse?.status !== 'granted') {
+      console.log('Requesting permission..');
+      await requestPermission();
+    }
+  } catch (err) {
+    console.error('Failed to start recording', err);
+  }
+
 }

@@ -3,9 +3,11 @@ import { Text, View, TextInput, Pressable, NativeModules } from "react-native";
 import React from "react";
 import { Camera, useFrameProcessor, useCameraDevice, runAtTargetFps } from "react-native-vision-camera";
 import { firebase } from "@react-native-firebase/functions";
-import { getCamPerms, getMicPerms } from '../utils/permissionReqs';
-import { _arrayBufferToBase64 } from '../utils/arrayBufferToB64'
 import { CropResult, crop } from "vision-camera-cropper"
+
+import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
+import { _arrayBufferToBase64 } from '@/utils/arrayBufferToB64'
+import { _jpgFrameProcessor, _nullFrameProcessor } from "@/utils/frameProcessors";
 
 
 
@@ -53,7 +55,10 @@ export default function CameraScreen() {
   const [msgText, updateText] = React.useState("");
   const [fnReturnText, updateFnReturn] = React.useState("placeholder");
   const [videoState, updateVideoState] = React.useState("none");
-
+  
+  const nullFrameProcessor = useFrameProcessor(_nullFrameProcessor, []);
+  const jpgFrameProcessor = useFrameProcessor(_jpgFrameProcessor, []);
+  const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
 
   const testCloudFunction = async (textData: any) => {
     console.log(textData);
@@ -68,25 +73,12 @@ export default function CameraScreen() {
     console.log("Cloud function result: ", result);
   };
 
-    const frameProcessor = useFrameProcessor((frame) => {
-    'worklet'
-    runAtTargetFps(2, () => {
-      'worklet'
-      const cropRegion = {
-        left:100,
-        top:100,
-        width:100,
-        height:100
-      }
-      const result: CropResult = crop(frame,{saveAsFile:true});
-      console.log(result.path);
-    })
-  }, []);
   
   const device = useCameraDevice('back');
   
   getCamPerms(device);
   getMicPerms(device);
+  getAudioPerms();
 
   return (
     <View style = {{flex: 1}}>
@@ -123,7 +115,7 @@ export default function CameraScreen() {
           isActive={true}
           video = {true}
           audio = {true}
-          frameProcessor={frameProcessor}
+          frameProcessor={curFrameProcessor}
           />
         )}
       </View>
