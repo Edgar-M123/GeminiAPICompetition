@@ -1,22 +1,27 @@
 import { Link } from "expo-router";
-import { Text, View, TextInput, Pressable, NativeModules } from "react-native";
+import { Text, View, TextInput, Pressable } from "react-native";
 import React from "react";
-import { Camera, useFrameProcessor, useCameraDevice, runAtTargetFps } from "react-native-vision-camera";
+import { Camera, useCameraDevice } from "react-native-vision-camera";
 import { firebase } from "@react-native-firebase/functions";
-import { CropResult, crop } from "vision-camera-cropper"
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
 import { _arrayBufferToBase64 } from '@/utils/arrayBufferToB64'
 import { _jpgFrameProcessor, _nullFrameProcessor } from "@/utils/frameProcessors";
-
+import { clearFiles } from "@/utils/geminiFunctions";
 
 
 interface firebaseFnResult {
   data: {
     text: string
   }
-}
+};
 
+
+
+const jpgQueue: Array<string> = [];
+
+clearFiles()
+    
 
 const recordVideo = async (ref: React.RefObject<Camera>, state: string, updateState: React.Dispatch<React.SetStateAction<string>>) => {
   
@@ -56,10 +61,12 @@ export default function CameraScreen() {
   const [fnReturnText, updateFnReturn] = React.useState("placeholder");
   const [videoState, updateVideoState] = React.useState("none");
   
-  const nullFrameProcessor = useFrameProcessor(_nullFrameProcessor, []);
-  const jpgFrameProcessor = useFrameProcessor(_jpgFrameProcessor, []);
+  const nullFrameProcessor = _nullFrameProcessor();
+  const jpgFrameProcessor = _jpgFrameProcessor(jpgQueue);
   const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
 
+  
+  
   const testCloudFunction = async (textData: any) => {
     console.log(textData);
     console.log("Running cloud function");
@@ -104,6 +111,12 @@ export default function CameraScreen() {
         onPress={() => recordVideo(camera_ref, videoState, updateVideoState)}
         >
           <Text>rec</Text>
+        </Pressable>
+        <Pressable
+        style = {{padding: 10, alignItems: 'center', borderWidth: 1}}
+        onPress={() => setFrameProcessor(jpgFrameProcessor)}
+        >
+          <Text>start conversation</Text>
         </Pressable>
       </View>
       <View style = {{flex: 1}}>
