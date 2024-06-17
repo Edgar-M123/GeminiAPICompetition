@@ -3,11 +3,13 @@ import { Text, View, TextInput, Pressable } from "react-native";
 import React from "react";
 import { Camera, useCameraDevice } from "react-native-vision-camera";
 import { firebase } from "@react-native-firebase/functions";
+import { ISharedValue, useSharedValue } from "react-native-worklets-core";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
 import { _arrayBufferToBase64 } from '@/utils/arrayBufferToB64'
 import { _jpgFrameProcessor, _nullFrameProcessor } from "@/utils/frameProcessors";
-import { clearFiles } from "@/utils/geminiFunctions";
+import { GeminiFile, clearFiles, generateText } from "@/utils/geminiFunctions";
+import prompts from "@/constants/Prompts";
 
 
 interface firebaseFnResult {
@@ -15,56 +17,46 @@ interface firebaseFnResult {
     text: string
   }
 };
-
-
-
-const jpgQueue: Array<string> = [];
+const geminiModel: string = "gemini-1.5-pro"
 
 clearFiles()
-    
-
-const recordVideo = async (ref: React.RefObject<Camera>, state: string, updateState: React.Dispatch<React.SetStateAction<string>>) => {
-  
-  if (state == 'none') {
-    await ref.current?.startRecording({
-      onRecordingFinished: (video) => console.log(video),
-      onRecordingError: (error) => console.error(error),
-      fileType: 'mp4'
-      });
-    console.log('Recording started...')
-
-    setTimeout(async () => {
-      await ref.current?.stopRecording();
-      console.log('Recording timed out.')
-      updateState('none');
-    }, 5000)
-    
-
-    updateState('recording');
-  };
-
-  if (state == 'recording') {
-    console.log('Awaiting recording stoppage...')
-    await ref.current?.stopRecording()
-    console.log('Recording stopped.')
-    
-    updateState('none')
-  }
-}
 
 
 
 export default function CameraScreen() {
   
+  const jpgQueue = useSharedValue<string[]>([]);
+  const uriQueue = useSharedValue<string[]>([]);
+
   const camera_ref = React.useRef<Camera>(null);
   const [msgText, updateText] = React.useState("");
   const [fnReturnText, updateFnReturn] = React.useState("placeholder");
-  const [videoState, updateVideoState] = React.useState("none");
+
   
   const nullFrameProcessor = _nullFrameProcessor();
-  const jpgFrameProcessor = _jpgFrameProcessor(jpgQueue);
+  const jpgFrameProcessor = _jpgFrameProcessor(jpgQueue, uriQueue);
   const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
-
+  
+  
+  const startConversation = async () => {
+    // start convo
+    if (curFrameProcessor == nullFrameProcessor) {
+      setFrameProcessor(jpgFrameProcessor)
+      return
+    }
+    
+    // end convo
+    if (curFrameProcessor != nullFrameProcessor) {
+      setFrameProcessor(nullFrameProcessor)
+      console.log("\nGLOBAL| jpgQueue:\n", JSON.stringify(jpgQueue));
+      console.log("\nGLOBAL| uriQueue:\n", JSON.stringify(uriQueue));
+      const response = await generateText(geminiModel, prompts.describePicture, uriQueue.value)
+      console.log("gemini response:", JSON.stringify(response));
+      console.log(response.candidates[0].content.parts[0].text);
+      clearFiles()
+      return
+    }
+  }
   
   
   const testCloudFunction = async (textData: any) => {
@@ -108,13 +100,7 @@ export default function CameraScreen() {
       <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 10, alignSelf: 'center', backgroundColor: 'white'}}>
         <Pressable
         style = {{padding: 10, alignItems: 'center', borderWidth: 1}}
-        onPress={() => recordVideo(camera_ref, videoState, updateVideoState)}
-        >
-          <Text>rec</Text>
-        </Pressable>
-        <Pressable
-        style = {{padding: 10, alignItems: 'center', borderWidth: 1}}
-        onPress={() => setFrameProcessor(jpgFrameProcessor)}
+        onPress={async () => startConversation()}
         >
           <Text>start conversation</Text>
         </Pressable>
