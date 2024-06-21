@@ -4,12 +4,12 @@ import React from "react";
 import { Camera, useCameraDevice } from "react-native-vision-camera";
 import { firebase } from "@react-native-firebase/functions";
 import { ISharedValue, useSharedValue } from "react-native-worklets-core";
+import { useFrameProcessor, runAtTargetFps, Frame } from "react-native-vision-camera";
+import { crop } from "vision-camera-cropper";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
-import { _arrayBufferToBase64 } from '@/utils/arrayBufferToB64'
-import { _jpgFrameProcessor, _nullFrameProcessor } from "@/utils/frameProcessors";
-import { GeminiFile, clearFiles, generateText } from "@/utils/geminiFunctions";
-import prompts from "@/constants/Prompts";
+import { serverURL } from "@/constants/WebSocketURLs";
+import { uploadFiles } from "@/utils/geminiFunctions";
 
 
 interface firebaseFnResult {
@@ -17,44 +17,71 @@ interface firebaseFnResult {
     text: string
   }
 };
-const geminiModel: string = "gemini-1.5-pro"
-
-clearFiles()
-
 
 
 export default function CameraScreen() {
-  
+
+
+  var ws = new WebSocket(serverURL)
+  console.log(ws)
+
+
   const jpgQueue = useSharedValue<string[]>([]);
-  const uriQueue = useSharedValue<string[]>([]);
+  const b64Queue = useSharedValue<string[]>([]);
 
   const camera_ref = React.useRef<Camera>(null);
   const [msgText, updateText] = React.useState("");
   const [fnReturnText, updateFnReturn] = React.useState("placeholder");
 
   
-  const nullFrameProcessor = _nullFrameProcessor();
-  const jpgFrameProcessor = _jpgFrameProcessor(jpgQueue, uriQueue);
+  const nullFrameProcessor = useFrameProcessor((frame: Frame) => {
+    'worklet'
+    runAtTargetFps(1, () => {
+      "worklet"
+      console.log("nothing")
+    })
+  }, []);
+
+  const jpgFrameProcessor =  useFrameProcessor((frame: Frame) => {
+    'worklet'
+    runAtTargetFps(1, () => {
+      'worklet'
+      const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
+      // console.log("\nFRAME_PROCESSOR| result_frame: ", result_frame)
+      // console.log("\nFRAME_PROCESSOR| old b64Queue: ", b64Queue.value)
+      const result_b64 = result_frame.base64
+      if (result_b64) {
+          console.log("\nFRAME_PROCESSOR| pushing array...")
+          b64Queue.value.push(result_b64)
+      } 
+      // console.log("\nFRAME_PROCESSOR| new b64Queue: ", b64Queue.value)
+      
+    })
+    }, [jpgQueue, b64Queue])
+    
   const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
-  
-  
-  const startConversation = async () => {
+
+
+  const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>();
+
+  const startConversation = () => {
     // start convo
     if (curFrameProcessor == nullFrameProcessor) {
       setFrameProcessor(jpgFrameProcessor)
-      return
+      ws.send("REC_STARTED");
+      const interval = setInterval(() => {uploadFiles(ws, b64Queue); console.log("intervalID: ", interval)}, 2000);
+      setLoopUpload(interval)
     }
     
     // end convo
     if (curFrameProcessor != nullFrameProcessor) {
-      setFrameProcessor(nullFrameProcessor)
-      console.log("\nGLOBAL| jpgQueue:\n", JSON.stringify(jpgQueue));
-      console.log("\nGLOBAL| uriQueue:\n", JSON.stringify(uriQueue));
-      const response = await generateText(geminiModel, prompts.describePicture, uriQueue.value)
-      console.log("gemini response:", JSON.stringify(response));
-      console.log(response.candidates[0].content.parts[0].text);
-      clearFiles()
-      return
+      setFrameProcessor(nullFrameProcessor);
+      console.log("Clear IntervalID", loopUpload)
+      clearInterval(loopUpload)
+      console.log("\nGLOBAL| jpgQueue:\n", jpgQueue.value.length);
+      console.log("\nGLOBAL| b64Queue:\n", b64Queue.value.length);
+      // const response = await generateText(ws, prompts.describePicture, b64Queue.value)
+      // console.log("gemini response:", JSON.stringify(response));
     }
   }
   

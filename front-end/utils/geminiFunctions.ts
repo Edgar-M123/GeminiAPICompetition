@@ -1,3 +1,4 @@
+import { ISharedValue } from "react-native-worklets-core";
 
 export const upload_endpoint: string = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${process.env.EXPO_PUBLIC_GEMINI_API_KEY}`;
 export const file_endpoint: string = `https://generativelanguage.googleapis.com/v1beta/files?key=${process.env.EXPO_PUBLIC_GEMINI_API_KEY}&pageSize=100`;
@@ -65,27 +66,27 @@ interface GeminiContentResponse {
 }
 
 
-export async function uploadFile(filename: string): Promise<GeminiFile> {
-    'worklet'
-    const data = {
-        [filename]: {
-            "displayName": filename,
-            "mimeType": "image/jpeg"
-        }
-    };
-    
-    console.log("\nGEMINI_UPLOADFILE| Sending post request...");
-    const response = fetch(upload_endpoint, {
-        method: "POST",
-        headers: {
-            "Content-Type": "image/jpeg"
-        },
-        body: JSON.stringify(data)
-    }).then((data) => data.json());
-    
-    
-    return response.then((data) => {console.log(JSON.stringify(data)); return data})
+export function uploadFiles(ws: WebSocket, b64Queue: ISharedValue<string[]>): void {
+
+    console.log("\nGEMINI_UPLOADFILE| WebSocket: ", ws)
+    console.log("\nGEMINI_UPLOADFILE| WebSocket Typeof: ", typeof ws)
+
+    console.log("\nGEMINI_UPLOADFILE| Sending post request for new file...");
+
+    if (b64Queue.value && b64Queue.value.length) {
+
+        b64Queue.value.forEach((b64) => {
+            console.log("push to ws")
+            const data = {type: "REC_IN_PROG", data: b64} 
+            ws.send(JSON.stringify(data))
+        })
+        
+        b64Queue.value = []
+    }
 }
+
+
+
 
 
 export async function requestFileList(): Promise<FileListResult> {
@@ -126,15 +127,13 @@ export async function clearFiles() {
 }
 
 
-export async function generateText(model: string, text_prompt: string, images_uris_list: Array<String>): Promise<GeminiContentResponse> {
-    const endpoint: string = generate_endpoint_fn(model);
-    console.log("\nGENERATE_TEXT| endpoint:\n", endpoint)
+export async function generateText(ws: WebSocket, text_prompt: string, images_uris_list: Array<String>): Promise<void> {
 
     const auth_key = process.env.EXPO_PUBLIC_GCLOUD_AUTH_KEY as string
 
     const parts: object[] = []
     parts.push({"text": text_prompt})
-    images_uris_list.forEach((uri) => parts.push({"fileData": {"mimeType": "image/jpeg", "fileUri": uri}}))
+    images_uris_list.forEach((uri) => parts.push({"fileData": {"fileUri": uri}}))
     console.log("\nGENERATE_TEXT| parts sent to gemini:\n", JSON.stringify(parts))
     
     const body_content = JSON.stringify({
@@ -144,21 +143,8 @@ export async function generateText(model: string, text_prompt: string, images_ur
             }
         ]
     })
+    console.log("\nGENERATE_TEXT| body_Content sent to gemini:\n", JSON.stringify(body_content))
 
-    const response = await fetch(
-        endpoint,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-                // "Authorization": auth_key
-            },
-            body: body_content
-        }
-    )
-    console.log("\nGENERATE_TEXT| response:\n", response)
-    const responseJson = await response.json()
-    console.log("\nGENERATE_TEXT| response:\n", JSON.stringify(responseJson))
 
-    return responseJson
+    return;
 }
