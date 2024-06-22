@@ -1,15 +1,17 @@
 import { Link } from "expo-router";
 import { Text, View, TextInput, Pressable } from "react-native";
 import React from "react";
-import { Camera, useCameraDevice } from "react-native-vision-camera";
-import { firebase } from "@react-native-firebase/functions";
+import { useFrameProcessor, runAtTargetFps, Frame, Camera, useCameraDevice, useCameraFormat } from "react-native-vision-camera";
 import { ISharedValue, useSharedValue } from "react-native-worklets-core";
-import { useFrameProcessor, runAtTargetFps, Frame } from "react-native-vision-camera";
 import { crop } from "vision-camera-cropper";
+import { Audio } from 'expo-av'
+import { firebase } from "@react-native-firebase/functions";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
 import { serverURL } from "@/constants/WebSocketURLs";
-import { uploadFiles } from "@/utils/geminiFunctions";
+import { uploadFiles, uploadFiles_intarray } from "@/utils/geminiFunctions";
+import { startAudioRecording, stopAudioRecording } from "@/utils/convoFunctions";
+import prompts from "@/constants/Prompts";
 
 
 interface firebaseFnResult {
@@ -19,20 +21,22 @@ interface firebaseFnResult {
 };
 
 
+var ws: WebSocket = new WebSocket(serverURL)
+ws.addEventListener("error", (ev) => {console.log("error event: ", ev)})
+ws.addEventListener("open", (ev) => {console.log("open event: ", ev); ws.send(JSON.stringify({type: "message", data: "Accessing server from ASD Support App."}))})
+ws.addEventListener("close", (ev) => {console.log("close event: ", ev); ws.send(JSON.stringify({type: "message", data: "Server connection has closed."}))})
+
 export default function CameraScreen() {
-
-
-  var ws = new WebSocket(serverURL)
-  console.log(ws)
 
 
   const jpgQueue = useSharedValue<string[]>([]);
   const b64Queue = useSharedValue<string[]>([]);
+  const intArrayQueue: Uint8Array[] = [];
 
   const camera_ref = React.useRef<Camera>(null);
   const [msgText, updateText] = React.useState("");
   const [fnReturnText, updateFnReturn] = React.useState("placeholder");
-
+  
   
   const nullFrameProcessor = useFrameProcessor((frame: Frame) => {
     'worklet'
@@ -41,47 +45,69 @@ export default function CameraScreen() {
       console.log("nothing")
     })
   }, []);
-
+  
   const jpgFrameProcessor =  useFrameProcessor((frame: Frame) => {
     'worklet'
     runAtTargetFps(1, () => {
       'worklet'
-      const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
-      // console.log("\nFRAME_PROCESSOR| result_frame: ", result_frame)
-      // console.log("\nFRAME_PROCESSOR| old b64Queue: ", b64Queue.value)
-      const result_b64 = result_frame.base64
-      if (result_b64) {
+      
+      // const result_int = new Uint8Array(frame.toArrayBuffer())
+      // if (result_int) {
+        //   console.log("\nFRAME_PROCESSOR| pushing array...")
+        //   b64Queue_int.value.push(result_int)
+        // } 
+        
+        
+        const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
+        const result_b64 = result_frame.base64
+        if (result_b64) {
           console.log("\nFRAME_PROCESSOR| pushing array...")
           b64Queue.value.push(result_b64)
-      } 
-      // console.log("\nFRAME_PROCESSOR| new b64Queue: ", b64Queue.value)
+        } 
       
     })
     }, [jpgQueue, b64Queue])
     
-  const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
+    const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
+    
+    
+    const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>();
+    const [audioRecordingState, setAudioRecordingState] = React.useState<Audio.Recording>();
 
-
-  const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>();
-
-  const startConversation = () => {
+  const startConversation = async () => {
     // start convo
     if (curFrameProcessor == nullFrameProcessor) {
       setFrameProcessor(jpgFrameProcessor)
-      ws.send("REC_STARTED");
+      ws.send(JSON.stringify({type: "message",  data: "REC_STARTED"}));
+      startAudioRecording(audioRecordingState, setAudioRecordingState)
       const interval = setInterval(() => {uploadFiles(ws, b64Queue); console.log("intervalID: ", interval)}, 2000);
       setLoopUpload(interval)
     }
     
     // end convo
     if (curFrameProcessor != nullFrameProcessor) {
+      
       setFrameProcessor(nullFrameProcessor);
       console.log("Clear IntervalID", loopUpload)
       clearInterval(loopUpload)
-      console.log("\nGLOBAL| jpgQueue:\n", jpgQueue.value.length);
-      console.log("\nGLOBAL| b64Queue:\n", b64Queue.value.length);
-      // const response = await generateText(ws, prompts.describePicture, b64Queue.value)
-      // console.log("gemini response:", JSON.stringify(response));
+
+      const audioBlob = await stopAudioRecording(audioRecordingState, setAudioRecordingState)
+      if (audioBlob) {
+        const reader = new FileReader()
+        reader.addEventListener("load", () => {
+          console.log("AUDIO RECORDING: blob filereader result: ", reader.result?.slice(0, 25));
+          console.log("AUDIO RECORDING: Sending blob to ws...")
+          ws.send(JSON.stringify({type: "AUDIO_UPLOAD", data: reader.result}))
+          console.log("AUDIO RECORDING: Blob sent to ws.")
+        })
+        
+        console.log("AUDIO RECORDING: reading audio blob")
+        reader.readAsDataURL(audioBlob)
+      
+      }
+      ws.send(JSON.stringify({type: "GENERATE_TEXT",  data: prompts.describePicture}));
+
+     
     }
   }
   
@@ -100,7 +126,7 @@ export default function CameraScreen() {
   };
 
   
-  const device = useCameraDevice('back');
+  const device = useCameraDevice('front');
   
   getCamPerms(device);
   getMicPerms(device);
@@ -138,6 +164,9 @@ export default function CameraScreen() {
           ref={camera_ref}
           style={{flex: 1}}
           device={device}
+          format={useCameraFormat(device, [{
+            videoResolution: {width: 640, height: 480}
+          }])}
           isActive={true}
           video = {true}
           audio = {true}

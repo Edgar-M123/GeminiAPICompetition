@@ -7,4 +7,5 @@ services:
       true
     environment:
       - PYTHONUNBUFFERED=1
-    
+    volumes:
+      - /app

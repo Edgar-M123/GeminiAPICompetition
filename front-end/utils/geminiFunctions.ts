@@ -77,12 +77,32 @@ export function uploadFiles(ws: WebSocket, b64Queue: ISharedValue<string[]>): vo
 
         b64Queue.value.forEach((b64) => {
             console.log("push to ws")
-            const data = {type: "REC_IN_PROG", data: b64} 
+            const data = {type: "IMG_UPLOAD", data: b64} 
             ws.send(JSON.stringify(data))
         })
         
         b64Queue.value = []
     }
+}
+
+export function uploadFiles_intarray(ws: WebSocket, intQueue: ISharedValue<Uint8Array[]>): void {
+
+    console.log("\nGEMINI_UPLOADFILE| WebSocket: ", ws)
+    console.log("\nGEMINI_UPLOADFILE| WebSocket Typeof: ", typeof ws)
+
+    console.log("\nGEMINI_UPLOADFILE| Sending post request for new BYTES file...");
+    
+    if (intQueue.value && intQueue.value.length) {
+        
+        intQueue.value.forEach((b64) => {
+            console.log("push to ws")
+            const data = {type: "IMG_UPLOAD_BYTES", data: b64} 
+            ws.send(JSON.stringify(data))
+        })
+        
+        intQueue.value = []
+    }
+    console.log("\nGEMINI_UPLOADFILE| BYTES file sent...");
 }
 
 
