@@ -68,11 +68,28 @@ export default function CameraScreen() {
     })
     }, [jpgQueue, b64Queue])
     
-    const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
+  const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
+  
+  
+  const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>();
+  const [audioRecordingState, setAudioRecordingState] = React.useState<Audio.Recording>();
+
+  const sendAudioBlob = (audioBlob: Blob) => {
+    const reader = new FileReader()
+    reader.addEventListener("load", () => {
+      console.log("AUDIO RECORDING: blob filereader result: ", reader.result?.slice(0, 25));
+      console.log("AUDIO RECORDING: Sending blob to ws...")
+      ws.send(JSON.stringify({type: "AUDIO_UPLOAD", data: reader.result}))
+      console.log("AUDIO RECORDING: Blob sent to ws.")
+      console.log("Sending generate text request...")
+      ws.send(JSON.stringify({type: "GENERATE_TEXT",  data: prompts.describeAudioPicture}));
+      console.log("Sent generate text request")
+    })
+    console.log("AUDIO RECORDING: reading audio blob")
+    reader.readAsDataURL(audioBlob)
     
-    
-    const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>();
-    const [audioRecordingState, setAudioRecordingState] = React.useState<Audio.Recording>();
+
+  }
 
   const startConversation = async () => {
     // start convo
@@ -93,19 +110,9 @@ export default function CameraScreen() {
 
       const audioBlob = await stopAudioRecording(audioRecordingState, setAudioRecordingState)
       if (audioBlob) {
-        const reader = new FileReader()
-        reader.addEventListener("load", () => {
-          console.log("AUDIO RECORDING: blob filereader result: ", reader.result?.slice(0, 25));
-          console.log("AUDIO RECORDING: Sending blob to ws...")
-          ws.send(JSON.stringify({type: "AUDIO_UPLOAD", data: reader.result}))
-          console.log("AUDIO RECORDING: Blob sent to ws.")
-        })
-        
-        console.log("AUDIO RECORDING: reading audio blob")
-        reader.readAsDataURL(audioBlob)
-      
+        console.log("Awaiting audioblob")
+        sendAudioBlob(audioBlob)
       }
-      ws.send(JSON.stringify({type: "GENERATE_TEXT",  data: prompts.describePicture}));
 
      
     }
