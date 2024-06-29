@@ -1,5 +1,4 @@
-import { Link } from "expo-router";
-import { Text, View, TextInput, Pressable } from "react-native";
+import { Text, View, TextInput, Pressable, ScrollView } from "react-native";
 import React from "react";
 import { useFrameProcessor, runAtTargetFps, Frame, Camera, useCameraDevice, useCameraFormat } from "react-native-vision-camera";
 import { ISharedValue, useSharedValue } from "react-native-worklets-core";
@@ -20,22 +19,43 @@ interface firebaseFnResult {
   }
 };
 
+interface SocketMessage {
+  type: string
+  data: any
+}
+
 
 var ws: WebSocket = new WebSocket(serverURL)
 ws.addEventListener("error", (ev) => {console.log("error event: ", ev)})
-ws.addEventListener("open", (ev) => {console.log("open event: ", ev); ws.send(JSON.stringify({type: "message", data: "Accessing server from ASD Support App."}))})
-ws.addEventListener("close", (ev) => {console.log("close event: ", ev); ws.send(JSON.stringify({type: "message", data: "Server connection has closed."}))})
+ws.addEventListener("open", (ev) => {
+    console.log("open event: ", ev); 
+    ws.send(JSON.stringify({type: "message", data: "Accessing server from ASD Support App."}));
+  }
+)
+ws.addEventListener("close", (ev) => {
+    console.log("close event: ", ev); 
+    ws.send(JSON.stringify({type: "message", data: "Server connection has closed."}));
+  }
+)
 
 export default function CameraScreen() {
+  
+  const [serverMessage, setServerMessage] = React.useState<SocketMessage>()
 
+  React.useEffect(() => {
+    ws.addEventListener("message", (ev) => {
+        console.log("ON_MESSAGE: message received"); 
+        const message: SocketMessage = JSON.parse(ev.data);
+        setServerMessage(message);
+        console.log("ON_MESSAGE: message type: ", message.type);
+      }
+    )
+  }, [])
 
-  const jpgQueue = useSharedValue<string[]>([]);
   const b64Queue = useSharedValue<string[]>([]);
-  const intArrayQueue: Uint8Array[] = [];
 
   const camera_ref = React.useRef<Camera>(null);
   const [msgText, updateText] = React.useState("");
-  const [fnReturnText, updateFnReturn] = React.useState("placeholder");
   
   
   const nullFrameProcessor = useFrameProcessor((frame: Frame) => {
@@ -66,7 +86,7 @@ export default function CameraScreen() {
         } 
       
     })
-    }, [jpgQueue, b64Queue])
+    }, [b64Queue])
     
   const [curFrameProcessor, setFrameProcessor] = React.useState(nullFrameProcessor);
   
@@ -88,7 +108,6 @@ export default function CameraScreen() {
     console.log("AUDIO RECORDING: reading audio blob")
     reader.readAsDataURL(audioBlob)
     
-
   }
 
   const startConversation = async () => {
@@ -118,19 +137,6 @@ export default function CameraScreen() {
     }
   }
   
-  
-  const testCloudFunction = async (textData: any) => {
-    console.log(textData);
-    console.log("Running cloud function");
-    const result = await firebase.functions().httpsCallable('on_call_example')(
-      {
-        text: textData
-      }
-    ) as  firebaseFnResult;
-    updateFnReturn(result.data.text);
-    console.log('Cloud function ran');
-    console.log("Cloud function result: ", result);
-  };
 
   
   const device = useCameraDevice('front');
@@ -141,28 +147,25 @@ export default function CameraScreen() {
 
   return (
     <View style = {{flex: 1}}>
-      <View style = {{flex:0}}>
-        <Link href= "./" style={{color: 'blue', textDecorationLine: 'underline'}}>Back to Index</Link>
+      <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 150, maxHeight: 100, alignSelf: 'center', backgroundColor: "rgba(255,255,255,0.5)", borderRadius: 10, margin: 10}}>
+        {serverMessage && serverMessage.type == "generate_text_response" && (
+          <ScrollView style = {{padding: 10}}>
+            <Text>
+            {serverMessage.data}
+            </Text>
+          </ScrollView>
+          )
+        }
       </View>
-      <View style = {{flex:0}}>
-        <TextInput
-          placeholder="Test text"
-          style = {{padding: 10}}
-          onChangeText={(text) => {updateText(text)}}
-        />
-      </View>
-      <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 50, alignSelf: 'center', backgroundColor: 'white'}}>
-        {msgText != "" && (<Text style = {{padding: 10}}>
-          {msgText}
-        </Text>
-        )}
-      </View>
-      <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 10, alignSelf: 'center', backgroundColor: 'white'}}>
+      <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 20, alignSelf: 'center', backgroundColor: 'transparent', borderRadius: 40, width: 80, height: 80, overflow: "hidden"}}>
         <Pressable
-        style = {{padding: 10, alignItems: 'center', borderWidth: 1}}
-        onPress={async () => startConversation()}
+          style = {{padding: 10, paddingTop: 2, alignItems: 'center', borderRadius: 40, width: 80, height: 80, backgroundColor: "yellow", justifyContent: 'center'}}
+          onPress={async () => startConversation()}
+          android_ripple={{color: "black", foreground: true}}
         >
-          <Text>start conversation</Text>
+          {curFrameProcessor == jpgFrameProcessor && (
+            <Text style={{fontSize: 40}}>{"\u25A0"}</Text>
+          )}
         </Pressable>
       </View>
       <View style = {{flex: 1}}>
@@ -180,13 +183,6 @@ export default function CameraScreen() {
           frameProcessor={curFrameProcessor}
           />
         )}
-      </View>
-      <View style = {{flex: 1}}>
-        <Pressable style = {{padding: 10, borderWidth: 1}}
-          onPress={() => testCloudFunction(msgText)}
-        >
-          <Text>{fnReturnText}</Text>
-        </Pressable>
       </View>
     </View>
   )

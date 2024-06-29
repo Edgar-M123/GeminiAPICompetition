@@ -145,6 +145,10 @@ async def handler(websocket):
                     "data": response.text
                 }
 
+                print("Sending data back to client...")
+                await websocket.send(json.dumps(event))
+                print("Data sent")
+
                 for file in SET_UPLOADED_FILES:
                     genai.delete_file(file)
 
