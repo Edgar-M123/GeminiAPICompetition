@@ -1,48 +1,45 @@
 import asyncio
 import websockets
+from websockets.server import WebSocketServerProtocol
+
+from pydantic import ValidationError
+
 import os
 import re
-import string, random, base64
+import base64
 import json
 import time
+import uuid
 
+from websocket_types import *
+from gemini_prompts import *
 
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-load_dotenv()
-
+load_dotenv() # load env variables from .env
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+genai.configure(api_key=GEMINI_API_KEY) # configure google api with your API key
 
-genai.configure(api_key=GEMINI_API_KEY) # configure library with your API key
+model = genai.GenerativeModel( # initialize flash model
+    model_name='gemini-1.5-flash',
+)
 
-model = genai.GenerativeModel('gemini-1.5-flash') # initialize flash model
+SET_SESSION_IDS: set[str] = set()
+SET_CLIENTS: set[WebSocketServerProtocol] = set()
+DICT_CLIENT_SESSIONS: dict[str, GeminiSession] = {}
+
+def parse_b64(b64_string: str, client_session: GeminiSession, extension: str = "jpg"):
+    # gets b64 string and decodes it into saved image file. Returns saved image filename
 
 
-SET_FILE_IDS = set()
-SET_UPLOADED_FILES = set()
-LIST_TASKS = []
-
-def parse_b64(b64_string: str, set_ids: set, extension: str = "jpg"):
-
-    def rand_str(set_ids: set):
-        chars=string.digits + string.ascii_letters
-        img_id = ''.join(random.sample(chars, 8))
-
-        if img_id in set_ids:
-            rand_str(set_ids)
-            return
-        
-        set_ids.add(img_id)
-
-        return img_id
+    # generate img_id and add it to set
+    img_id = str(uuid.uuid4())
+    client_session.set_file_ids.add(img_id)
 
     print("decoding...")
     decoded = base64.b64decode(b64_string)
     
-    print("generating string...")
-    img_id = rand_str(set_ids)
-
     filename = f"{extension}-{img_id}.{extension}"
 
     print("saving file...")
@@ -51,118 +48,157 @@ def parse_b64(b64_string: str, set_ids: set, extension: str = "jpg"):
 
     return filename
 
-async def img_upload_handler(message):
+
+async def img_upload_handler(message, client_session: GeminiSession):
     print("Invoking IMG UPLOAD function")
     t1 = time.perf_counter()
-            
-    b64string = message["data"]
-    filename = parse_b64(b64string, SET_FILE_IDS)
+
+    try:
+        img_data = FileUpload(**message)
+    except ValidationError as exc:
+        print(exc)
+
+    b64string = img_data.b64_string
+    filename = parse_b64(b64string, client_session)
     
     print("uploading image file...")
     response = genai.upload_file(filename, mime_type="image/jpeg")
     t2 = time.perf_counter()
     
-    SET_UPLOADED_FILES.add(response)
+    client_session.set_uploaded_files.add(response)
     print(f"GEMINI IMAGE UPLOAD RESPONSE FILE NAME: {response.name}")
-    print(f"GEMINI AUDIO UPLOAD RESPONSE TIME: {t2-t1}")
-    
-    event = {
-        "type": "upload_response",
-        "data": response.uri
-    }
+    print(f"GEMINI IMAGE UPLOAD RESPONSE TIME: {t2-t1}")
 
-async def audio_upload_handler(message):
+    return None
+
+
+async def audio_upload_handler(message, client_session: GeminiSession):
     print("Invoking AUDIO UPLOAD function")
     t1 = time.perf_counter()
-                
-    b64_raw = message['data']
-    if re.match("data:audio/mpeg;base64,", b64_raw):
-        b64 = re.sub("data:audio/mpeg;base64,", "", b64_raw)
 
-    filename = parse_b64(b64, SET_FILE_IDS, ".mp3")
-    print("Audio filename: ", filename)
+    try:
+        audio_data = AudioUpload(**message)
+    except ValidationError as exc:
+        print(exc)
+    except Exception as exc:
+        print(exc)
+    else:
+        filename = parse_b64(audio_data.b64_string_clean, client_session, "mp3")
+        print("Audio filename: ", filename)
+        
+        print("uploading audio file...")
+        response = genai.upload_file(filename, mime_type="audio/mp3")
+        t2 = time.perf_counter()
+
+        client_session.set_uploaded_files.add(response)
+        print(f"GEMINI AUDIO UPLOAD RESPONSE FILE NAME: {response.name}")
+        print(f"GEMINI AUDIO UPLOAD RESPONSE TIME: {t2-t1}")
     
-    print("uploading audio file...")
-    response = genai.upload_file(filename, mime_type="audio/mp3")
-    t2 = time.perf_counter()
-
-
-    SET_UPLOADED_FILES.add(response)
-    print(f"GEMINI AUDIO UPLOAD RESPONSE FILE NAME: {response.name}")
-    print(f"GEMINI AUDIO UPLOAD RESPONSE TIME: {t2-t1}")
+    return None
     
-    event = {
-        "type": "upload_response",
-        "data": response.uri
-    }
 
+async def handler(websocket: WebSocketServerProtocol):
+        
+        # on client connection...
+        client_id = websocket.id
+        print(f"Connection started with {client_id}")
 
-async def handler(websocket):
-        print("Connection started")
+        SET_CLIENTS.add(websocket)
+
+        session_id = str(uuid.uuid4())
+        
+        client_session = GeminiSession( # create client_session
+            session_id=session_id,
+            set_file_ids=set(),
+            set_uploaded_files=set()
+        )
+
+        DICT_CLIENT_SESSIONS[session_id] = client_session
+
+        event = {
+            "type": "session_created",
+            "session_id": client_session.session_id
+        }
+
+        websocket.send(json.dumps(event)) # returning session id to client
+
         async for message in websocket:
-            # print("raw message", message)
             message = json.loads(message)
             print("Received message of type: ", message['type'])
 
             if message['type'] == "IMG_UPLOAD":
-                LIST_TASKS.append(asyncio.create_task(img_upload_handler(message)))
-                
-                continue
+                asyncio.create_task(img_upload_handler(message, client_session)) # create concurrent task to process & upload image data
 
-                # await websocket.send(json.dumps(event))
+            elif message['type'] == "AUDIO_UPLOAD":
+                client_session.audio_recording_task = asyncio.create_task(audio_upload_handler(message, client_session)) # create concurrent task but keep it to await
 
-            if message['type'] == "AUDIO_UPLOAD":
-                LIST_TASKS.append(asyncio.create_task(audio_upload_handler(message)))
-
-                continue
-
-
-
-            if message['type'] == "GENERATE_TEXT":
+            elif message['type'] == "GENERATE_TEXT":
                 print("Invoking GENERATE TEXT function")
                 t1 = time.perf_counter()
 
-                print("awaiting tasks")
-                await asyncio.gather(*LIST_TASKS)
-                print("tasks awaited")
+                print("awaiting audio upload")
+                await asyncio.gather(client_session.audio_recording_task) # await audio upload task. We can drop images for speed but not audio.
+                print("audio upload completed")
                 
+                prompt = conversational_prompt.format(chat_history = str(client_session.chat_history))
+                print("PROMPT TEXT: ", prompt)
 
-                prompt_text = message["data"]
-                print("PROMPT TEXT: ", prompt_text)
-
-                contents = [*SET_UPLOADED_FILES, prompt_text]
+                contents = [*client_session.set_uploaded_files, prompt]
                 print(contents)
 
                 print("Sent response...")
-                response = model.generate_content(contents=contents)
-                print("GEMINI GENERATE TEXT RESPONSE: ", response.text)
-                t2 = time.perf_counter()
 
-                print(f"Time to generate text: {t2-t1}")
+                try:
+                    response = model.generate_content(
+                        contents=contents, 
+                        stream=True
+                    )
 
-                event = {
-                    "type": "generate_text_response",
-                    "data": response.text
-                }
+                except Exception as exc:
+                    print("EXCEPTION: ", exc)
 
-                print("Sending data back to client...")
-                await websocket.send(json.dumps(event))
-                print("Data sent")
+                else:
+                    
+                    i = 0
+                    response_text = ""
+                    
+                    for chunk in response:
+                        i += 1
+                        if i == 1:
+                            t2 = time.perf_counter()
 
-                for file in SET_UPLOADED_FILES:
-                    genai.delete_file(file)
+                        response_text = response_text + chunk.text
 
-                SET_UPLOADED_FILES.clear()
+                        print("GEMINI GENERATE TEXT RESPONSE: ", chunk.text)
+                        print("Concatenated response: ", response_text)
+                        event = {
+                            "type": "generate_text_response",
+                            "data": response_text
+                        }
+                        print("Sending data back to client...")
+                        await websocket.send(json.dumps(event))
+                        print("Data sent")
+                    
+                    full_chat = json.loads(response_text)
+                    chat_user = ("user", full_chat['transcript'])
+                    chat_ai = ("assistant", full_chat['conversational_response'])
 
-                continue
+                    client_session.chat_history.append(chat_user)
+                    client_session.chat_history.append(chat_ai)
 
-                # await websocket.send(json.dumps(event))
+                    print(f"Time to generate first chunk: {t2-t1}")
 
-            if message["type"] == "message":
+
+                finally:
+                    for file in client_session.set_uploaded_files:
+                        genai.delete_file(file)
+                    client_session.set_uploaded_files.clear()
+
+
+
+            else: 
                 print("Invoke MESSAGE function")
-
                 print(message)
-                continue
                 
 
 async def main():

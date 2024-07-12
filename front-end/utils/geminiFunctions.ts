@@ -69,45 +69,21 @@ interface GeminiContentResponse {
 export function uploadFiles(ws: WebSocket, b64Queue: ISharedValue<string[]>): void {
 
     console.log("\nGEMINI_UPLOADFILE| WebSocket: ", ws)
-    console.log("\nGEMINI_UPLOADFILE| WebSocket Typeof: ", typeof ws)
+    console.log("\nGEMINI_UPLOADFILE| Sending new file to ws...");
 
-    console.log("\nGEMINI_UPLOADFILE| Sending post request for new file...");
+    if (b64Queue.value != undefined && b64Queue.value.length > 0) {
 
-    if (b64Queue.value && b64Queue.value.length) {
-
-        b64Queue.value.forEach((b64) => {
-            console.log("push to ws")
-            const data = {type: "IMG_UPLOAD", data: b64} 
-            ws.send(JSON.stringify(data))
-        })
-        
+        const b64QueueCopy: string[] = JSON.parse(JSON.stringify(b64Queue.value)) // copy queue so we can clear the queue without missing an image
         b64Queue.value = []
-    }
-}
 
-export function uploadFiles_intarray(ws: WebSocket, intQueue: ISharedValue<Uint8Array[]>): void {
-
-    console.log("\nGEMINI_UPLOADFILE| WebSocket: ", ws)
-    console.log("\nGEMINI_UPLOADFILE| WebSocket Typeof: ", typeof ws)
-
-    console.log("\nGEMINI_UPLOADFILE| Sending post request for new BYTES file...");
-    
-    if (intQueue.value && intQueue.value.length) {
-        
-        intQueue.value.forEach((b64) => {
+        b64QueueCopy.forEach((b64) => { // for each string in the queue, push it to the websocket
             console.log("push to ws")
-            const data = {type: "IMG_UPLOAD_BYTES", data: b64} 
+            const data = {type: "IMG_UPLOAD", b64_string: b64} 
             ws.send(JSON.stringify(data))
         })
         
-        intQueue.value = []
     }
-    console.log("\nGEMINI_UPLOADFILE| BYTES file sent...");
 }
-
-
-
-
 
 export async function requestFileList(): Promise<FileListResult> {
     const fileListResponse = await fetch(file_endpoint, {

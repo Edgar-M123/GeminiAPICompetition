@@ -1,5 +1,5 @@
 import { Text, View, TextInput, Pressable, ScrollView } from "react-native";
-import React from "react";
+import React, { useContext } from "react";
 import { useFrameProcessor, runAtTargetFps, Frame, Camera, useCameraDevice, useCameraFormat } from "react-native-vision-camera";
 import { ISharedValue, useSharedValue } from "react-native-worklets-core";
 import { crop } from "vision-camera-cropper";
@@ -7,10 +7,11 @@ import { Audio } from 'expo-av'
 import { firebase } from "@react-native-firebase/functions";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
-import { serverURL } from "@/constants/WebSocketURLs";
-import { uploadFiles, uploadFiles_intarray } from "@/utils/geminiFunctions";
+import { SERVER_URL } from "@/constants/WebSocketURLs";
+import { uploadFiles } from "@/utils/geminiFunctions";
 import { startAudioRecording, stopAudioRecording } from "@/utils/convoFunctions";
 import prompts from "@/constants/Prompts";
+import { ConnectionContext, ConnectionContextValues } from "@/components/ConnectionContext";
 
 
 interface firebaseFnResult {
@@ -25,32 +26,12 @@ interface SocketMessage {
 }
 
 
-var ws: WebSocket = new WebSocket(serverURL)
-ws.addEventListener("error", (ev) => {console.log("error event: ", ev)})
-ws.addEventListener("open", (ev) => {
-    console.log("open event: ", ev); 
-    ws.send(JSON.stringify({type: "message", data: "Accessing server from ASD Support App."}));
-  }
-)
-ws.addEventListener("close", (ev) => {
-    console.log("close event: ", ev); 
-    ws.send(JSON.stringify({type: "message", data: "Server connection has closed."}));
-  }
-)
-
 export default function CameraScreen() {
   
-  const [serverMessage, setServerMessage] = React.useState<SocketMessage>()
+  const contextValues: ConnectionContextValues = useContext(ConnectionContext)
 
-  React.useEffect(() => {
-    ws.addEventListener("message", (ev) => {
-        console.log("ON_MESSAGE: message received"); 
-        const message: SocketMessage = JSON.parse(ev.data);
-        setServerMessage(message);
-        console.log("ON_MESSAGE: message type: ", message.type);
-      }
-    )
-  }, [])
+  var start: DOMHighResTimeStamp;
+  var end: DOMHighResTimeStamp;
 
   const b64Queue = useSharedValue<string[]>([]);
 
@@ -60,30 +41,18 @@ export default function CameraScreen() {
   
   const nullFrameProcessor = useFrameProcessor((frame: Frame) => {
     'worklet'
-    runAtTargetFps(1, () => {
-      "worklet"
-      console.log("nothing")
-    })
   }, []);
   
   const jpgFrameProcessor =  useFrameProcessor((frame: Frame) => {
     'worklet'
     runAtTargetFps(1, () => {
       'worklet'
-      
-      // const result_int = new Uint8Array(frame.toArrayBuffer())
-      // if (result_int) {
-        //   console.log("\nFRAME_PROCESSOR| pushing array...")
-        //   b64Queue_int.value.push(result_int)
-        // } 
-        
-        
-        const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
-        const result_b64 = result_frame.base64
-        if (result_b64) {
-          console.log("\nFRAME_PROCESSOR| pushing array...")
-          b64Queue.value.push(result_b64)
-        } 
+      const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
+      const result_b64 = result_frame.base64
+      if (result_b64 != undefined) {
+        console.log("\nFRAME_PROCESSOR| pushing array...")
+        b64Queue.value.push(result_b64)
+      } 
       
     })
     }, [b64Queue])
@@ -99,10 +68,10 @@ export default function CameraScreen() {
     reader.addEventListener("load", () => {
       console.log("AUDIO RECORDING: blob filereader result: ", reader.result?.slice(0, 25));
       console.log("AUDIO RECORDING: Sending blob to ws...")
-      ws.send(JSON.stringify({type: "AUDIO_UPLOAD", data: reader.result}))
+      contextValues.socket.send(JSON.stringify({type: "AUDIO_UPLOAD", b64_string: reader.result}))
       console.log("AUDIO RECORDING: Blob sent to ws.")
       console.log("Sending generate text request...")
-      ws.send(JSON.stringify({type: "GENERATE_TEXT",  data: prompts.describeAudioPicture}));
+      contextValues.socket.send(JSON.stringify({type: "GENERATE_TEXT"}));
       console.log("Sent generate text request")
     })
     console.log("AUDIO RECORDING: reading audio blob")
@@ -113,24 +82,33 @@ export default function CameraScreen() {
   const startConversation = async () => {
     // start convo
     if (curFrameProcessor == nullFrameProcessor) {
-      setFrameProcessor(jpgFrameProcessor)
-      ws.send(JSON.stringify({type: "message",  data: "REC_STARTED"}));
-      startAudioRecording(audioRecordingState, setAudioRecordingState)
-      const interval = setInterval(() => {uploadFiles(ws, b64Queue); console.log("intervalID: ", interval)}, 2000);
-      setLoopUpload(interval)
+      setFrameProcessor(jpgFrameProcessor) // set frame processor to start saving frames
+      contextValues.socket.send(JSON.stringify({type: "message",  data: "REC_STARTED"})); // send message to ws
+      const result = await startAudioRecording(audioRecordingState, setAudioRecordingState) // try to start audio recording.
+
+      if (result != null) {
+        console.log(result.err)
+        setFrameProcessor(nullFrameProcessor)
+      } else {
+        setLoopUpload(setInterval(() => {uploadFiles(contextValues.socket, b64Queue)}, 1000))      }
     }
     
     // end convo
     if (curFrameProcessor != nullFrameProcessor) {
-      
+    
+      start = performance.now()
+      console.log("Time start:", start)
+
       setFrameProcessor(nullFrameProcessor);
       console.log("Clear IntervalID", loopUpload)
       clearInterval(loopUpload)
 
       const audioBlob = await stopAudioRecording(audioRecordingState, setAudioRecordingState)
-      if (audioBlob) {
+      if (audioBlob != undefined) {
         console.log("Awaiting audioblob")
         sendAudioBlob(audioBlob)
+      } else {
+        console.log("Audio blob failed.")
       }
 
      
@@ -148,10 +126,10 @@ export default function CameraScreen() {
   return (
     <View style = {{flex: 1}}>
       <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 150, maxHeight: 100, alignSelf: 'center', backgroundColor: "rgba(255,255,255,0.5)", borderRadius: 10, margin: 10}}>
-        {serverMessage && serverMessage.type == "generate_text_response" && (
+        {contextValues.socketMessage && contextValues.socketMessage.type == "generate_text_response" && (
           <ScrollView style = {{padding: 10}}>
             <Text>
-            {serverMessage.data}
+            {contextValues.socketMessage.data}
             </Text>
           </ScrollView>
           )

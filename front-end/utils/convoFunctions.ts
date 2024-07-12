@@ -47,11 +47,16 @@ export async function startAudioRecording(audioRecordingState: Audio.Recording |
   console.log("AUDIO RECORDING: Audio recorded started successfully.")
 	} catch (err) {
       console.error('AUDIO RECORDING: Failed to start recording audio', err);
+      return {result: "failed", err: err}
     }
+  
+  return null
+  
+
 
 }
 
-export async function stopAudioRecording(audioRecordingState: Audio.Recording | undefined, setAudioRecordingState: React.Dispatch<SetStateAction<Audio.Recording | undefined>>): Promise<Blob | void> {
+export async function stopAudioRecording(audioRecordingState: Audio.Recording | undefined, setAudioRecordingState: React.Dispatch<SetStateAction<Audio.Recording | undefined>>): Promise<Blob | undefined> {
   console.log('Stopping recording..');
   
   setAudioRecordingState(undefined);
@@ -64,7 +69,7 @@ export async function stopAudioRecording(audioRecordingState: Audio.Recording | 
 
   console.log("AUDIO RECORDING: Getting audio recording URI")
   const uri = audioRecordingState?.getURI();
-  if (uri) {
+  if (uri != undefined) {
     console.log('AUDIO RECORDING: Recording stopped and stored at', uri);
     console.log('AUDIO RECORDING: Getting audio blob...');
     const audioFile = await fetch(uri)
@@ -72,5 +77,7 @@ export async function stopAudioRecording(audioRecordingState: Audio.Recording | 
     console.log("AUDIO RECORDING: audioBlob received.")
     return audioBlob
   }
+
+  return undefined
 
 }
