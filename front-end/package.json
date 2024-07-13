@@ -1,5 +1,5 @@
 {
-  "name": "front-end",
+  "name": "asd_ai_support",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -18,7 +18,9 @@
     "@expo/vector-icons": "^14.0.0",
     "@google/generative-ai": "^0.12.0",
     "@react-native-firebase/app": "^20.1.0",
+    "@react-native-firebase/auth": "^20.1.0",
     "@react-native-firebase/functions": "^20.1.0",
+    "@react-native-google-signin/google-signin": "^12.2.1",
     "@react-native-voice/voice": "^3.2.4",
     "@react-navigation/native": "^6.0.2",
     "dotenv": "^16.4.5",

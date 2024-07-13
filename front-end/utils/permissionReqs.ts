@@ -4,10 +4,10 @@ import { Audio } from 'expo-av'
 
 export const getCamPerms = async (device: CameraDevice | undefined) => {
 
-    const cameraPermission = Camera.getCameraPermissionStatus();
+    let cameraPermission = Camera.getCameraPermissionStatus();
 
-    if (cameraPermission == 'not-determined') { 
-        const newCameraPermission = await Camera.requestCameraPermission()
+    if (cameraPermission == 'not-determined'|| cameraPermission == 'denied') { 
+        cameraPermission = await Camera.requestCameraPermission()
     };
 
     if (device == null) {
