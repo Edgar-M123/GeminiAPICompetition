@@ -97,10 +97,10 @@ export default function CameraScreen() {
   async function playTTS(b64_string: string) {
     
     console.log("Creating mp3 from b64_string")
-    await FileSystem.writeAsStringAsync("file://tts_audio.mp3", b64_string, { encoding: FileSystem.EncodingType.Base64 });
+    await FileSystem.writeAsStringAsync((FileSystem.cacheDirectory + "tts_audio.mp3"), b64_string, { encoding: FileSystem.EncodingType.Base64 });
 
     console.log("Creating sound from mp3")
-    const sound = await Audio.Sound.createAsync({ uri: "file://tts_audio.mp3" });
+    const sound = await Audio.Sound.createAsync({ uri: (FileSystem.cacheDirectory + "tts_audio.mp3") });
 
     console.log("Playing sound from mp3")
     await sound.sound.playAsync()
@@ -116,8 +116,11 @@ export default function CameraScreen() {
 
   React.useEffect(() => {
     
-    if (contextValues.socketMessage.type == "generate_text_response" && contextValues.socketMessage.data.b64_audio != null) {
-      playTTS(contextValues.socketMessage.data.b64_audio)
+    console.log("effect run")
+    if (contextValues.socketMessage != undefined && contextValues.socketMessage.type == "generate_text_response") {
+      const data = JSON.parse(contextValues.socketMessage.data)
+      console.log('Playing tts')
+      playTTS(data.b64_audio).then(() => console.log("tts done"))
     }
 
 

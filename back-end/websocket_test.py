@@ -180,7 +180,11 @@ async def handler(websocket: WebSocketServerProtocol):
                 else:
                     
                     response_text = response.text
-                    print("Response text: ", response_text)
+
+                    if re.match(r"^```json", response_text):
+                        response_text = re.sub(r"^```json", "", response_text)
+                        response_text = re.sub(r"```$", "", response_text)
+
                     t2 = time.perf_counter()
                     try:
                         parsed_dict = json.loads(response_text)
