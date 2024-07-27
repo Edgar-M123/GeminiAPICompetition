@@ -26,6 +26,7 @@ class PromptRequest(BaseModel):
     prompt: str
 
 class GeminiResponse(BaseModel):
+    transcript: str = Field(description="The transcript of the audio received in the prompt")
     conversational_response: str = Field(description="Response to the what was said in the video recording.")
     preferences: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes/dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
     likes: list[str] = None

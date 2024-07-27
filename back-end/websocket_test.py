@@ -180,13 +180,14 @@ async def handler(websocket: WebSocketServerProtocol):
                 else:
                     
                     response_text = response.text
+                    print("Response text: ", response_text)
                     t2 = time.perf_counter()
                     try:
-                        parsed_response = GeminiResponse(**json.loads(response_text))
-                    except Exception as exc:
-                        print("ERROR: ", exc)
-                    else:
+                        parsed_dict = json.loads(response_text)
+                        parsed_response = GeminiResponse(**parsed_dict)
                         response_conversation: str = parsed_response.conversational_response
+                    except Exception as exc:
+                        print("Error during GeminiResponse creation: ", exc)
                     
                     try:
                         t1_audio = time.perf_counter()
