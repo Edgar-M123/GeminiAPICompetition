@@ -180,6 +180,7 @@ async def handler(websocket: WebSocketServerProtocol):
                 else:
                     
                     response_text = response.text
+                    t2 = time.perf_counter()
                     try:
                         parsed_response = GeminiResponse(**json.loads(response_text))
                     except Exception as exc:
@@ -199,7 +200,7 @@ async def handler(websocket: WebSocketServerProtocol):
                     print("GEMINI GENERATE TEXT RESPONSE: ", response_text)
                     event = {
                         "type": "generate_text_response",
-                        "data": {"text": response_text, "b64_audio": response_audio_b64}                        
+                        "data": json.dumps({"text": response_text, "b64_audio": response_audio_b64})                    
                     }
                     print("Sending data back to client....")
                     await websocket.send(json.dumps(event))
