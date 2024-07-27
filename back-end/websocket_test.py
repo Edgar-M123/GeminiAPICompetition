@@ -201,7 +201,7 @@ async def handler(websocket: WebSocketServerProtocol):
                         "type": "generate_text_response",
                         "data": {"text": response_text, "b64_audio": response_audio_b64}                        
                     }
-                    print("Sending data back to client...")
+                    print("Sending data back to client....")
                     await websocket.send(json.dumps(event))
                     print("Data sent")
                     
