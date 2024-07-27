@@ -25,9 +25,12 @@ class PromptRequest(BaseModel):
     type: str
     prompt: str
 
-class GeminiResponse(TypedDict):
+class GeminiResponse(BaseModel):
     conversational_response: str = Field(description="Response to the what was said in the video recording.")
-    preferences: list[str] = Field(description="OPTIONAL: Possible individual likes/dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
+    preferences: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes/dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
+    likes: list[str] = None
+    dislikes: list[str] = None
+
 
 class GeminiSession(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

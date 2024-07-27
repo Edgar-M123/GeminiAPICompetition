@@ -1,6 +1,7 @@
 import asyncio
 import websockets
 from websockets.server import WebSocketServerProtocol
+from websockets.exceptions import ConnectionClosed
 
 from pydantic import ValidationError
 
@@ -15,6 +16,8 @@ from websocket_types import *
 from gemini_prompts import *
 
 import google.generativeai as genai
+from google.cloud import texttospeech
+
 from dotenv import load_dotenv
 
 load_dotenv() # load env variables from .env
@@ -24,10 +27,23 @@ genai.configure(api_key=GEMINI_API_KEY) # configure google api with your API key
 model = genai.GenerativeModel( # initialize flash model
     model_name='gemini-1.5-flash',
 )
+tts_client = texttospeech.TextToSpeechClient()
+tts_voice = texttospeech.VoiceSelectionParams(language_code = "en-US", ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL)
+tts_audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
 
 SET_SESSION_IDS: set[str] = set()
 SET_CLIENTS: set[WebSocketServerProtocol] = set()
 DICT_CLIENT_SESSIONS: dict[str, GeminiSession] = {}
+
+def get_tts_response(text: str, client = tts_client):
+
+    input = texttospeech.SynthesisInput(text = text)
+    response = client.synthesize_speech(input=input, voice=tts_voice, audio_config=tts_audio_config)
+
+    b64_audio = base64.encodebytes(response.audio_content)
+
+    return b64_audio
+
 
 def parse_b64(b64_string: str, client_session: GeminiSession, extension: str = "jpg"):
     # gets b64 string and decodes it into saved image file. Returns saved image filename
@@ -99,6 +115,11 @@ async def audio_upload_handler(message, client_session: GeminiSession):
 
 async def handler(websocket: WebSocketServerProtocol):
         
+        global SET_CLIENTS
+        global SET_SESSION_IDS
+        global DICT_CLIENT_SESSIONS
+
+
         # on client connection...
         client_id = websocket.id
         print(f"Connection started with {client_id}")
@@ -150,8 +171,7 @@ async def handler(websocket: WebSocketServerProtocol):
 
                 try:
                     response = model.generate_content(
-                        contents=contents, 
-                        stream=True
+                        contents=contents
                     )
 
                 except Exception as exc:
@@ -159,25 +179,31 @@ async def handler(websocket: WebSocketServerProtocol):
 
                 else:
                     
-                    i = 0
-                    response_text = ""
+                    response_text = response.text
+                    try:
+                        parsed_response = GeminiResponse(**json.loads(response_text))
+                    except Exception as exc:
+                        print("ERROR: ", exc)
+                    else:
+                        response_conversation: str = parsed_response.conversational_response
                     
-                    for chunk in response:
-                        i += 1
-                        if i == 1:
-                            t2 = time.perf_counter()
+                    try:
+                        t1_audio = time.perf_counter()
+                        response_audio_b64 = get_tts_response(response_conversation)
+                        t2_audio = time.perf_counter()
+                        print("Time to get tts audio: ", (t2_audio - t1_audio))
+                    except Exception as exc:
+                        print("Error during tts synthesis: ", exc)
 
-                        response_text = response_text + chunk.text
 
-                        print("GEMINI GENERATE TEXT RESPONSE: ", chunk.text)
-                        print("Concatenated response: ", response_text)
-                        event = {
-                            "type": "generate_text_response",
-                            "data": response_text
-                        }
-                        print("Sending data back to client...")
-                        await websocket.send(json.dumps(event))
-                        print("Data sent")
+                    print("GEMINI GENERATE TEXT RESPONSE: ", response_text)
+                    event = {
+                        "type": "generate_text_response",
+                        "data": {"text": response_text, "b64_audio": response_audio_b64}                        
+                    }
+                    print("Sending data back to client...")
+                    await websocket.send(json.dumps(event))
+                    print("Data sent")
                     
                     full_chat = json.loads(response_text)
                     chat_user = ("user", full_chat['transcript'])

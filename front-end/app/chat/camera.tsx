@@ -1,5 +1,6 @@
 import { Text, View, TextInput, Pressable, ScrollView, SafeAreaView } from "react-native";
 import React, { useContext } from "react";
+import * as FileSystem from 'expo-file-system'
 import { useFrameProcessor, runAtTargetFps, Frame, Camera, useCameraDevice, useCameraFormat, ReadonlyFrameProcessor } from "react-native-vision-camera";
 import { ISharedValue, useSharedValue } from "react-native-worklets-core";
 import { crop } from "vision-camera-cropper";
@@ -16,24 +17,11 @@ import { ConnectionContext, ConnectionContextValues } from "@/components/Connect
 import { Colors } from "@/constants/Colors";
 
 
-interface firebaseFnResult {
-  data: {
-    text: string
-  }
-};
-
-interface SocketMessage {
-  type: string
-  data: any
-}
-
-
 export default function CameraScreen() {
   
   const contextValues: ConnectionContextValues = useContext(ConnectionContext) // WebSocket values
   const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>(); // for managing image upload intervals
   const [audioRecordingState, setAudioRecordingState] = React.useState<Audio.Recording>(); // for audio recording
-  const [msgText, updateText] = React.useState(""); // TODO: NEED STILL?
 
   const camera_ref = React.useRef<Camera>(null);
   
@@ -55,7 +43,6 @@ export default function CameraScreen() {
   const [curFrameProcessor, setFrameProcessor] = React.useState<ReadonlyFrameProcessor>();
   
   
-
   // TODO: initialize FileReader at start of conversation
   const sendAudioBlob = (audioBlob: Blob) => { // function to send audio and generate text request
     const reader = new FileReader()
@@ -106,6 +93,19 @@ export default function CameraScreen() {
      
     }
   }
+
+  async function playTTS(b64_string: string) {
+    
+    console.log("Creating mp3 from b64_string")
+    await FileSystem.writeAsStringAsync("file://tts_audio.mp3", b64_string, { encoding: FileSystem.EncodingType.Base64 });
+
+    console.log("Creating sound from mp3")
+    const sound = await Audio.Sound.createAsync({ uri: "file://tts_audio.mp3" });
+
+    console.log("Playing sound from mp3")
+    await sound.sound.playAsync()
+
+  }
     
   const device = useCameraDevice('front');
   getCamPerms(device);
@@ -113,6 +113,17 @@ export default function CameraScreen() {
   getAudioPerms();
 
   const router = useRouter()
+
+  React.useEffect(() => {
+    
+    if (contextValues.socketMessage.type == "generate_text_response" && contextValues.socketMessage.data.b64_audio != null) {
+      playTTS(contextValues.socketMessage.data.b64_audio)
+    }
+
+
+  }, [contextValues.socketMessage])
+
+
 
   return (
 
