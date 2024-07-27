@@ -120,7 +120,7 @@ async def handler(websocket: WebSocketServerProtocol):
             "session_id": client_session.session_id
         }
 
-        websocket.send(json.dumps(event)) # returning session id to client
+        await websocket.send(json.dumps(event)) # returning session id to client
 
         async for message in websocket:
             message = json.loads(message)
