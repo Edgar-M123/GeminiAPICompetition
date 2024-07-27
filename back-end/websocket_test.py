@@ -28,7 +28,7 @@ model = genai.GenerativeModel( # initialize flash model
     model_name='gemini-1.5-flash',
 )
 tts_client = texttospeech.TextToSpeechClient()
-tts_voice = texttospeech.VoiceSelectionParams(language_code = "en-US", ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL)
+tts_voice = texttospeech.VoiceSelectionParams(name = "en-US-Journey-O")
 tts_audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
 
 SET_SESSION_IDS: set[str] = set()
