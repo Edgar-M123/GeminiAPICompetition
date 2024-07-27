@@ -40,7 +40,7 @@ def get_tts_response(text: str, client = tts_client):
     input = texttospeech.SynthesisInput(text = text)
     response = client.synthesize_speech(input=input, voice=tts_voice, audio_config=tts_audio_config)
 
-    b64_audio = str(base64.b64encode(response.audio_content))
+    b64_audio = str(base64.b64encode(response.audio_content), encoding='ascii')
 
     return b64_audio
 
