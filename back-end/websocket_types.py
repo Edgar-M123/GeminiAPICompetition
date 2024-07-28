@@ -9,6 +9,29 @@ import re
 
 from functools import cached_property
 
+
+def pydantic_to_schema(pydantic_dict: dict) -> dict:
+    
+    type_conversions = {"string": genai_types.Type.STRING,
+                        "array": genai_types.Type.ARRAY,
+                        "object": genai_types.Type.OBJECT,
+                        "integer": genai_types.Type.INTEGER,
+                        "number": genai_types.Type.NUMBER,
+                        "boolean": genai_types.Type.BOOLEAN,
+                        }
+    
+    if isinstance(pydantic_dict, dict):
+        for key in list(pydantic_dict.keys()):
+            if key in ["title", "default"]:
+                del pydantic_dict[key]
+            elif key == "type":
+                pydantic_dict[key] = type_conversions[pydantic_dict[key]]
+                pydantic_dict["type_"] = pydantic_dict[key]
+                del pydantic_dict[key]
+            else:
+                pydantic_to_schema(pydantic_dict[key])
+    return pydantic_dict
+
 class FileUpload(BaseModel):
     type: str
     b64_string: str
@@ -29,9 +52,8 @@ class PromptRequest(BaseModel):
 class GeminiResponse(BaseModel):
     transcript: str = Field(description="The transcript of the audio received in the prompt")
     conversational_response: str = Field(description="Response to the what was said in the video recording.")
-    preferences: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes/dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
-    likes: list[str] = None
-    dislikes: list[str] = None
+    likes: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes that the individual expressed in the video. If nothing was mentioned, return 'None'")
+    dislikes: list[str] = Field(default = None, description="OPTIONAL: Possible individual dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
 
 gemini_response_schema = genai_types.Schema(
     type_ = genai_types.Type.OBJECT,
