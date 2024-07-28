@@ -13,27 +13,28 @@ import time
 import uuid
 
 from websocket_types import *
+from websocket_utils import *
 from gemini_prompts import *
 
+import firebase_admin
+from firebase_admin import firestore
 import google.generativeai as genai
 from google.cloud import texttospeech
 
 from dotenv import load_dotenv
-
 load_dotenv() # load env variables from .env
+
+# configure google services
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY) # configure google api with your API key
+model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 
-model = genai.GenerativeModel( # initialize flash model
-    model_name='gemini-1.5-flash',
-)
 tts_client = texttospeech.TextToSpeechClient()
 tts_voice = texttospeech.VoiceSelectionParams(language_code = "en-US", name = "en-US-Journey-O")
 tts_audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
 
-SET_SESSION_IDS: set[str] = set()
-SET_CLIENTS: set[WebSocketServerProtocol] = set()
-DICT_CLIENT_SESSIONS: dict[str, GeminiSession] = {}
+app = firebase_admin.initialize_app()
+db = firestore.client()
 
 def get_tts_response(text: str, client = tts_client):
 
@@ -45,74 +46,11 @@ def get_tts_response(text: str, client = tts_client):
     return b64_audio
 
 
-def parse_b64(b64_string: str, client_session: GeminiSession, extension: str = "jpg"):
-    # gets b64 string and decodes it into saved image file. Returns saved image filename
+SET_SESSION_IDS: set[str] = set()
+SET_CLIENTS: set[WebSocketServerProtocol] = set()
+DICT_CLIENT_SESSIONS: dict[str, GeminiSession] = {}
 
-
-    # generate img_id and add it to set
-    img_id = str(uuid.uuid4())
-    client_session.set_file_ids.add(img_id)
-
-    print("decoding...")
-    decoded = base64.b64decode(b64_string)
     
-    filename = f"{extension}-{img_id}.{extension}"
-
-    print("saving file...")
-    with open(filename, "wb") as f:
-        f.write(decoded)
-
-    return filename
-
-
-async def img_upload_handler(message, client_session: GeminiSession):
-    print("Invoking IMG UPLOAD function")
-    t1 = time.perf_counter()
-
-    try:
-        img_data = FileUpload(**message)
-    except ValidationError as exc:
-        print(exc)
-
-    b64string = img_data.b64_string
-    filename = parse_b64(b64string, client_session)
-    
-    print("uploading image file...")
-    response = genai.upload_file(filename, mime_type="image/jpeg")
-    t2 = time.perf_counter()
-    
-    client_session.set_uploaded_files.add(response)
-    print(f"GEMINI IMAGE UPLOAD RESPONSE FILE NAME: {response.name}")
-    print(f"GEMINI IMAGE UPLOAD RESPONSE TIME: {t2-t1}")
-
-    return None
-
-
-async def audio_upload_handler(message, client_session: GeminiSession):
-    print("Invoking AUDIO UPLOAD function")
-    t1 = time.perf_counter()
-
-    try:
-        audio_data = AudioUpload(**message)
-    except ValidationError as exc:
-        print(exc)
-    except Exception as exc:
-        print(exc)
-    else:
-        filename = parse_b64(audio_data.b64_string_clean, client_session, "mp3")
-        print("Audio filename: ", filename)
-        
-        print("uploading audio file...")
-        response = genai.upload_file(filename, mime_type="audio/mp3")
-        t2 = time.perf_counter()
-
-        client_session.set_uploaded_files.add(response)
-        print(f"GEMINI AUDIO UPLOAD RESPONSE FILE NAME: {response.name}")
-        print(f"GEMINI AUDIO UPLOAD RESPONSE TIME: {t2-t1}")
-    
-    return None
-    
-
 async def handler(websocket: WebSocketServerProtocol):
         
         global SET_CLIENTS

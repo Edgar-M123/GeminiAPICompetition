@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, computed_field, GetCoreSchemaHandler, Con
 from pydantic_core import CoreSchema, core_schema
 from typing_extensions import TypedDict
 from google.ai.generativelanguage_v1beta.types import Schema, Type
+from datetime import datetime
 
 from asyncio import Task
 import re
@@ -41,3 +42,11 @@ class GeminiSession(BaseModel):
     set_uploaded_files: set
     audio_recording_task: Task = None
     chat_history: list[tuple[str, str]] = []
+
+class Person(BaseModel):
+    first_name: str
+    last_name: str = None
+    dob: datetime = None
+    likes: list[str] = None
+    dislikes: list[str] = None
+    visual_description: str
