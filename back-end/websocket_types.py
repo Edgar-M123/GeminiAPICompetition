@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, computed_field, GetCoreSchemaHandler, ConfigDict
 from pydantic_core import CoreSchema, core_schema
 from typing_extensions import TypedDict
-from google.ai.generativelanguage_v1beta.types import Schema, Type
+from google.ai.generativelanguage_v1beta import types as genai_types
 from datetime import datetime
 
 from asyncio import Task
@@ -33,6 +33,24 @@ class GeminiResponse(BaseModel):
     likes: list[str] = None
     dislikes: list[str] = None
 
+gemini_response_schema = genai_types.Schema(
+    type_ = genai_types.Type.OBJECT,
+    properties = {
+        "transcript": genai_types.Schema(type_ = genai_types.Type.STRING, description = "The transcript of the audio received in the prompt"),
+        "conversational_response": genai_types.Schema(type_ = genai_types.Type.STRING, description = "Response to the what was said in the video recording."),
+        "likes": genai_types.Schema(
+            type_ = genai_types.Type.ARRAY, 
+            items = genai_types.Schema(type_ = genai_types.Type.STRING),
+            description="OPTIONAL: Possible individual likes that the individual expressed in the video. If nothing was mentioned, return 'None'"
+        ),
+        "dislikes": genai_types.Schema(
+            type_ = genai_types.Type.ARRAY, 
+            items = genai_types.Schema(type_ = genai_types.Type.STRING),
+            description="OPTIONAL: Possible individual dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'"
+        ),
+    },
+    required = ['transcript', 'conversational_response']
+)
 
 class GeminiSession(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
