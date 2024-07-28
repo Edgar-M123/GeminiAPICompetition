@@ -10,7 +10,7 @@ import re
 from functools import cached_property
 
 
-def pydantic_to_schema(pydantic_dict: dict) -> dict:
+def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     
     type_conversions = {"string": genai_types.Type.STRING,
                         "array": genai_types.Type.ARRAY,
@@ -20,17 +20,23 @@ def pydantic_to_schema(pydantic_dict: dict) -> dict:
                         "boolean": genai_types.Type.BOOLEAN,
                         }
     
-    if isinstance(pydantic_dict, dict):
-        for key in list(pydantic_dict.keys()):
-            if key in ["title", "default"]:
-                del pydantic_dict[key]
-            elif key == "type":
-                pydantic_dict[key] = type_conversions[pydantic_dict[key]]
-                pydantic_dict["type_"] = pydantic_dict[key]
-                del pydantic_dict[key]
-            else:
-                pydantic_to_schema(pydantic_dict[key])
-    return pydantic_dict
+    def clean_schema(pydantic_dict: dict) -> dict:
+        if isinstance(pydantic_dict, dict):
+            for key in list(pydantic_dict.keys()):
+                if key in ["title", "default"]:
+                    del pydantic_dict[key]
+                elif key == "type":
+                    pydantic_dict[key] = type_conversions[pydantic_dict[key]]
+                    pydantic_dict["type_"] = pydantic_dict[key]
+                    del pydantic_dict[key]
+                else:
+                    clean_schema(pydantic_dict[key])
+        return pydantic_dict
+    
+    clean_dict = clean_schema(pydantic_dict=pydantic_dict)
+    new_schema = genai_types.Schema(clean_dict)
+
+    return new_schema
 
 class FileUpload(BaseModel):
     type: str
