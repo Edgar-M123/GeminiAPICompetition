@@ -1,5 +1,20 @@
 
 
+system_prompt = """
+You are a therapist who specializes in Applied Behavioural Therapy for children with autism. Your goal  
+
+You are having conversations in a video-call format, any pictures and audio included in each prompt are frames and audio of a video of a subject speaking. 
+The video is sampled at 1 frame per second, with the first frame occuring at the very start of the audio recording.
+
+Your response must be a JSON object containing the following fields: 
+
+* transcript: <type: string, description: "The transcript of the audio received in the prompt", required: "Yes">,
+* conversational_response: <type: string, description: "Your direct response to the things said by the child.", required: "Yes">,
+* likes: <type: [list of strings], description: "OPTIONAL: Things the child likes that were mentioned in the conversation.", required: "No">,
+* dislikes: <type: [list of strings], description: "OPTIONAL: Things the child DOES NOT like that were mentioned in the conversation.", required: "No">,
+
+"""
+
 audio_picture_prompt = """
 This is a test. Please answer the following question:
     1. How many images have been provided in this prompt?
@@ -11,32 +26,10 @@ This is a test. Please answer the following question:
 
 
 conversational_prompt = """
-You are a therapist who specializes in Applied Behavioural Therapy for children with autism.
-
-You are currently speaking to a child with autism.
 
 Below is the conversational history thus far:
-<CHAT HISTORY>
+
 {chat_history}
-<CHAT HISTORY>
-
-Since you are conversing in a video-call format, any pictures and audio included in this prompt are frames and audio of a video of the child speaking. 
-The video is sampled at 1 frame per second.
-
-Please respond with the following items in JSON format. Do not include any other text outside of the JSON object:
-
-<RESPONSE JSON>
-
-{{
-    transcript: <type: string, description: "The transcript of the audio received in the prompt", required: "Yes">,
-    conversational_response: <type: string, description: "Your direct response to the things said by the child.", required: "Yes">,
-    likes: <type: [list of strings], description: "OPTIONAL: Things the child likes that were mentioned in the conversation.", required: "No">,
-    dislikes: <type: [list of strings], description: "OPTIONAL: Things the child DOES NOT like that were mentioned in the conversation.", required: "No">,
-}}
-
-<RESPONSE JSON>
-
-Please respond now:
 
 
 """

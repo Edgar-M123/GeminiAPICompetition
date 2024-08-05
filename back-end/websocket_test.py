@@ -28,8 +28,14 @@ load_dotenv() # load env variables from .env
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY) # configure google api with your API key
 # model = genai.GenerativeModel(model_name='gemini-1.5-flash')
-model = genai.GenerativeModel(model_name='gemini-1.5-pro', generation_config={"response_mime_type": "application/json",
-                                                 "response_schema": pydantic_to_schema(GeminiResponse.model_json_schema())})
+model = genai.GenerativeModel(
+    model_name='gemini-1.5-pro', 
+    generation_config={
+        "response_mime_type": "application/json",
+        "response_schema": pydantic_to_schema(GeminiResponse.model_json_schema())
+    },
+    system_instruction=system_prompt                           
+)
 
 tts_client = texttospeech.TextToSpeechClient()
 tts_voice = texttospeech.VoiceSelectionParams(language_code = "en-US", name = "en-US-Journey-O")
@@ -52,7 +58,6 @@ SET_SESSION_IDS: set[str] = set()
 SET_CLIENTS: set[WebSocketServerProtocol] = set()
 DICT_CLIENT_SESSIONS: dict[str, GeminiSession] = {}
 
-    
 async def handler(websocket: WebSocketServerProtocol):
         
         global SET_CLIENTS
@@ -101,7 +106,7 @@ async def handler(websocket: WebSocketServerProtocol):
                 await asyncio.gather(client_session.audio_recording_task) # await audio upload task. We can drop images for speed but not audio.
                 print("audio upload completed")
                 
-                prompt = conversational_prompt.format(chat_history = str(client_session.chat_history))
+                prompt = conversational_prompt.format(chat_history = str(json.dumps(client_session.chat_history)))
                 print("PROMPT TEXT: ", prompt)
 
                 contents = [*client_session.set_uploaded_files, prompt]
@@ -120,12 +125,14 @@ async def handler(websocket: WebSocketServerProtocol):
                 else:
                     
                     response_text = response.text
+                    t2 = time.perf_counter()
+
 
                     if re.match(r"^```json", response_text):
                         response_text = re.sub(r"^```json", "", response_text)
                         response_text = re.sub(r"```$", "", response_text)
 
-                    t2 = time.perf_counter()
+
                     try:
                         parsed_dict = json.loads(response_text)
                         parsed_response = GeminiResponse(**parsed_dict)
@@ -133,6 +140,7 @@ async def handler(websocket: WebSocketServerProtocol):
                     except Exception as exc:
                         print("Error during GeminiResponse creation: ", exc)
                     
+
                     try:
                         t1_audio = time.perf_counter()
                         response_audio_b64 = get_tts_response(response_conversation)
@@ -151,22 +159,19 @@ async def handler(websocket: WebSocketServerProtocol):
                     await websocket.send(json.dumps(event))
                     print("Data sent")
                     
-                    full_chat = json.loads(response_text)
-                    chat_user = ("user", full_chat['transcript'])
-                    chat_ai = ("assistant", full_chat['conversational_response'])
+                    chat_user = ("user", parsed_response.transcript)
+                    chat_ai = ("assistant", parsed_response.conversational_response)
 
                     client_session.chat_history.append(chat_user)
                     client_session.chat_history.append(chat_ai)
 
-                    print(f"Time to generate first chunk: {t2-t1}")
+                    print(f"Time to generate text: {t2-t1}")
 
 
                 finally:
                     for file in client_session.set_uploaded_files:
                         genai.delete_file(file)
                     client_session.set_uploaded_files.clear()
-
-
 
             else: 
                 print("Invoke MESSAGE function")

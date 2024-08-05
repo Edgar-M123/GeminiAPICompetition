@@ -67,7 +67,7 @@ def add_person(first_name, last_Name, visual_description, likes, dislikes, dob, 
 
 def get_persons(profile_id: str = "V2Wcje0VW0BMKCX7tM8K"):
     """
-    Get the profile information of all individuals associated with this account.
+    When there is an individual on camera, get the profile information of all individuals associated with this account.
     """
 
     print("Searching document collection")
@@ -81,7 +81,7 @@ def get_persons(profile_id: str = "V2Wcje0VW0BMKCX7tM8K"):
     return persons
 
 
-gemini_tools = [get_persons]
+gemini_tools = [add_person]
 
 
 get_persons("Edgar")

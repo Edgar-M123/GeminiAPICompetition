@@ -1,18 +1,17 @@
-import { Text, View, TextInput, Pressable, ScrollView, SafeAreaView } from "react-native";
 import React, { useContext } from "react";
-import * as FileSystem from 'expo-file-system'
+import { Text, View, TextInput, Pressable, ScrollView, SafeAreaView } from "react-native";
+import Voice from '@react-native-voice/voice'
 import { useFrameProcessor, runAtTargetFps, Frame, Camera, useCameraDevice, useCameraFormat, ReadonlyFrameProcessor } from "react-native-vision-camera";
-import { ISharedValue, useSharedValue } from "react-native-worklets-core";
 import { crop } from "vision-camera-cropper";
+import { useSharedValue } from "react-native-worklets-core";
+import * as FileSystem from 'expo-file-system'
 import { Audio } from 'expo-av'
 import { useRouter } from "expo-router";
 import auth from "@react-native-firebase/auth";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
-import { SERVER_URL } from "@/constants/WebSocketURLs";
 import { uploadFiles } from "@/utils/geminiFunctions";
-import { startAudioRecording, stopAudioRecording } from "@/utils/convoFunctions";
-import prompts from "@/constants/Prompts";
+import { checkSpeechEnd, startAudioRecording, stopAudioRecording } from "@/utils/convoFunctions";
 import { ConnectionContext, ConnectionContextValues } from "@/components/ConnectionContext";
 import { Colors } from "@/constants/Colors";
 
@@ -20,7 +19,9 @@ import { Colors } from "@/constants/Colors";
 export default function CameraScreen() {
   
   const contextValues: ConnectionContextValues = useContext(ConnectionContext) // WebSocket values
-  const [loopUpload, setLoopUpload] = React.useState<NodeJS.Timeout>(); // for managing image upload intervals
+  const [uploadInterval, setUploadInterval] = React.useState<NodeJS.Timeout>(); // for managing image upload intervals
+  const [checkSpeechInterval, setCheckSpeechInterval] = React.useState<NodeJS.Timeout>(); // for managing speech checks intervals
+  const [audioTimeout, setAudioTimeout] = React.useState<NodeJS.Timeout | undefined>(); // timeout for recording once speech is stopped
   const [audioRecordingState, setAudioRecordingState] = React.useState<Audio.Recording>(); // for audio recording
 
   const camera_ref = React.useRef<Camera>(null);
@@ -71,7 +72,10 @@ export default function CameraScreen() {
         console.log(result.err)
         setFrameProcessor(undefined)
       } else {
-        setLoopUpload(setInterval(() => {uploadFiles(contextValues.socket, b64Queue)}, 1000))
+        if (audioRecordingState) {
+          setUploadInterval(setInterval(() => {uploadFiles(contextValues.socket, b64Queue)}, 1000))
+          setCheckSpeechInterval(setInterval(() => {checkSpeechEnd(audioRecordingState, startConversation, audioTimeout, setAudioTimeout)}, 100))
+        }
       }
     }
     
@@ -79,8 +83,9 @@ export default function CameraScreen() {
     if (curFrameProcessor != undefined) {
     
       setFrameProcessor(undefined);
-      console.log("Clear IntervalID", loopUpload)
-      clearInterval(loopUpload)
+      console.log("Clear IntervalID", uploadInterval)
+      clearInterval(uploadInterval)
+      clearInterval(checkSpeechInterval)
 
       const audioBlob = await stopAudioRecording(audioRecordingState, setAudioRecordingState)
       if (audioBlob != undefined) {
@@ -106,6 +111,20 @@ export default function CameraScreen() {
     await sound.sound.playAsync()
 
   }
+
+  // TODO: Add generic responses to fill in gap between speech end and response creation
+    // download mp3 files of tts saying generic phrases
+    // on GENERATE TEXT call, choose random file and play audio
+
+
+  // TODO: Add Speech
+    // Press button to start session. (DONE)
+    // Every 0.1 seconds, check recording status (recording.getStatusAsync()) (DONE)
+    // if metering in status is below certain volume threshold, then start countdown to stop recording (1-2s) (DONE)
+    // Keep checking through the countdown, in case it was just a pause. (DONE)
+      // if below threshold and countdown still in effect, do nothing (DONE)
+    // outside of active conversation use react native voice to detect speech
+    // upon speech detection, start new conversation
     
   const device = useCameraDevice('front');
   getCamPerms(device);

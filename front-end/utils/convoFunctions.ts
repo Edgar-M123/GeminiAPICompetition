@@ -1,6 +1,6 @@
 import { Audio } from 'expo-av'
 import { getAudioPerms } from './permissionReqs';
-import { SetStateAction } from 'react';
+import React, { SetStateAction } from 'react';
 
 const recordingOptions = {
   isMeteringEnabled: true,
@@ -79,5 +79,32 @@ export async function stopAudioRecording(audioRecordingState: Audio.Recording | 
   }
 
   return undefined
+
+}
+
+
+export async function checkSpeechEnd(
+  audioRecordingState: Audio.Recording | undefined, 
+  startConversation: () => Promise<void>, 
+  audioTimeout: NodeJS.Timeout | undefined, 
+  setAudioTimeout: React.Dispatch<SetStateAction<NodeJS.Timeout | undefined>>) {
+  
+  if (audioRecordingState == undefined || audioRecordingState == null) {
+    return null
+  }
+
+  const status = await audioRecordingState.getStatusAsync();
+  if (status.metering && status.metering >= -100) {
+    if (audioTimeout == undefined || audioTimeout == null) {
+      setAudioTimeout(setTimeout(() => {
+        startConversation()
+      }, 2000))
+    }
+  } else {
+    if (audioTimeout != undefined && audioTimeout != null) {
+      clearTimeout(audioTimeout)
+    }
+  }
+
 
 }
