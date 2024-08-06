@@ -30,7 +30,12 @@ const recordingOptions = {
 };
 
 
-export async function startAudioRecording(audioRecordingState: Audio.Recording | undefined, setAudioRecordingState: React.Dispatch<SetStateAction<Audio.Recording | undefined>>) {
+export async function startAudioRecording(
+  audioRecordingState: Audio.Recording | undefined, 
+  setAudioRecordingState: React.Dispatch<SetStateAction<Audio.Recording | undefined>>,
+  startConversation: () => Promise<void>, 
+) {
+
 	try {
       console.log("AUDIO RECORDING: Getting permissions...")
       getAudioPerms()
@@ -40,15 +45,15 @@ export async function startAudioRecording(audioRecordingState: Audio.Recording |
       });
       console.log("AUDIO RECORDING: Permissions good.")
       
-      
-	console.log("AUDIO RECORDING: Starting recording audio...");
-	const { recording } = await Audio.Recording.createAsync(recordingOptions);
-  setAudioRecordingState(recording)
-  console.log("AUDIO RECORDING: Audio recorded started successfully.")
-	} catch (err) {
-      console.error('AUDIO RECORDING: Failed to start recording audio', err);
-      return {result: "failed", err: err}
-    }
+      console.log("AUDIO RECORDING: Starting recording audio...");
+      let audioTimeout: NodeJS.Timeout;
+      const { recording } = await Audio.Recording.createAsync(recordingOptions, (status) => {checkSpeechEnd(status, startConversation, audioTimeout)}, 100);
+      setAudioRecordingState(recording)
+      console.log("AUDIO RECORDING: Audio recorded started successfully.")
+  } catch (err) {
+    console.error('AUDIO RECORDING: Failed to start recording audio', err);
+    return {result: "failed", err: err}
+  }
   
   return null
   
@@ -83,27 +88,34 @@ export async function stopAudioRecording(audioRecordingState: Audio.Recording | 
 }
 
 
-export async function checkSpeechEnd(
-  audioRecordingState: Audio.Recording | undefined, 
+export function checkSpeechEnd(
+  status: Audio.RecordingStatus, 
   startConversation: () => Promise<void>, 
-  audioTimeout: NodeJS.Timeout | undefined, 
-  setAudioTimeout: React.Dispatch<SetStateAction<NodeJS.Timeout | undefined>>) {
-  
-  if (audioRecordingState == undefined || audioRecordingState == null) {
-    return null
-  }
+  audioTimeout: NodeJS.Timeout | undefined
+  ) {
 
-  const status = await audioRecordingState.getStatusAsync();
-  if (status.metering && status.metering >= -100) {
+  console.log("Recording metering level", status.metering)
+
+  if (status.metering && status.metering < -100) {
+    console.log("Metering below -100")
+
     if (audioTimeout == undefined || audioTimeout == null) {
-      setAudioTimeout(setTimeout(() => {
+      console.log("No audioTimeout. Starting end sequence")
+
+      audioTimeout = setTimeout(() => {
         startConversation()
-      }, 2000))
+      }, 2000)
+
     }
+
   } else {
+    console.log("Metering not below 100")
+    
     if (audioTimeout != undefined && audioTimeout != null) {
+      console.log("Clearing audioTimeout")
       clearTimeout(audioTimeout)
     }
+  
   }
 
 

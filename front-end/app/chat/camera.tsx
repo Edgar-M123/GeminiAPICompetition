@@ -13,91 +13,20 @@ import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs'
 import { uploadFiles } from "@/utils/geminiFunctions";
 import { checkSpeechEnd, startAudioRecording, stopAudioRecording } from "@/utils/convoFunctions";
 import { ConnectionContext, ConnectionContextValues } from "@/components/ConnectionContext";
+import Conversation from "@/types/Conversation";
 import { Colors } from "@/constants/Colors";
 
 
 export default function CameraScreen() {
   
   const contextValues: ConnectionContextValues = useContext(ConnectionContext) // WebSocket values
-  const [uploadInterval, setUploadInterval] = React.useState<NodeJS.Timeout>(); // for managing image upload intervals
-  const [checkSpeechInterval, setCheckSpeechInterval] = React.useState<NodeJS.Timeout>(); // for managing speech checks intervals
-  const [audioTimeout, setAudioTimeout] = React.useState<NodeJS.Timeout | undefined>(); // timeout for recording once speech is stopped
-  const [audioRecordingState, setAudioRecordingState] = React.useState<Audio.Recording>(); // for audio recording
 
   const camera_ref = React.useRef<Camera>(null);
+  const button_ref = React.useRef<View>(null);
   
-  const b64Queue = useSharedValue<string[]>([]); // Shared value for queuing b64strings of files for upload. Uploading during worklet is too slow.
-  const jpgFrameProcessor =  useFrameProcessor((frame: Frame) => { // frameprocesser that grabs 1 frame-per-second and converts to b64string, then adds to b64Queue
-    'worklet'
-    runAtTargetFps(1, () => {
-      'worklet'
-      const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
-      const result_b64 = result_frame.base64
-      if (result_b64 != undefined) {
-        console.log("\nFRAME_PROCESSOR| pushing array...")
-        b64Queue.value.push(result_b64)
-      } 
-      
-    })
-    }, [b64Queue])
-    
-  const [curFrameProcessor, setFrameProcessor] = React.useState<ReadonlyFrameProcessor>();
+  const [curFrameProcessor, setCurFrameProcessor] = React.useState<ReadonlyFrameProcessor | undefined>(undefined)
+  let conversation = new Conversation(contextValues, setCurFrameProcessor)
   
-  
-  // TODO: initialize FileReader at start of conversation
-  const sendAudioBlob = (audioBlob: Blob) => { // function to send audio and generate text request
-    const reader = new FileReader()
-    reader.addEventListener("load", () => {
-      console.log("AUDIO RECORDING: blob filereader result: ", reader.result?.slice(0, 25));
-      console.log("AUDIO RECORDING: Sending blob to ws...")
-      contextValues.socket.send(JSON.stringify({type: "AUDIO_UPLOAD", b64_string: reader.result}))
-      console.log("AUDIO RECORDING: Blob sent to ws.")
-      console.log("Sending generate text request...")
-      contextValues.socket.send(JSON.stringify({type: "GENERATE_TEXT"}));
-      console.log("Sent generate text request")
-    })
-    console.log("AUDIO RECORDING: reading audio blob")
-    reader.readAsDataURL(audioBlob)
-    
-  }
-
-  const startConversation = async () => {
-    // start convo
-    if (curFrameProcessor == undefined) {
-      setFrameProcessor(jpgFrameProcessor) // set frame processor to start saving frames
-      contextValues.socket.send(JSON.stringify({type: "message",  data: "REC_STARTED"})); // send message to ws
-      const result = await startAudioRecording(audioRecordingState, setAudioRecordingState) // try to start audio recording.
-
-      if (result != null) {
-        console.log(result.err)
-        setFrameProcessor(undefined)
-      } else {
-        if (audioRecordingState) {
-          setUploadInterval(setInterval(() => {uploadFiles(contextValues.socket, b64Queue)}, 1000))
-          setCheckSpeechInterval(setInterval(() => {checkSpeechEnd(audioRecordingState, startConversation, audioTimeout, setAudioTimeout)}, 100))
-        }
-      }
-    }
-    
-    // end convo
-    if (curFrameProcessor != undefined) {
-    
-      setFrameProcessor(undefined);
-      console.log("Clear IntervalID", uploadInterval)
-      clearInterval(uploadInterval)
-      clearInterval(checkSpeechInterval)
-
-      const audioBlob = await stopAudioRecording(audioRecordingState, setAudioRecordingState)
-      if (audioBlob != undefined) {
-        console.log("Awaiting audioblob")
-        sendAudioBlob(audioBlob)
-      } else {
-        console.log("Audio blob failed.")
-      }
-
-     
-    }
-  }
 
   async function playTTS(b64_string: string) {
     
@@ -145,6 +74,12 @@ export default function CameraScreen() {
 
   }, [contextValues.socketMessage])
 
+  React.useEffect(() => {
+    console.log("conversation.curFrameProcessor updated. Setting state")
+    setCurFrameProcessor(conversation.curFrameProcessor)
+    console.log("curFrameProcessor has been set")
+
+  }, [conversation.curFrameProcessor])
 
 
   return (
@@ -180,7 +115,7 @@ export default function CameraScreen() {
           isActive={true}
           video = {true}
           audio = {true}
-          frameProcessor={curFrameProcessor}
+          frameProcessor={conversation.curFrameProcessor}
           />
         )}
       </View>
@@ -200,13 +135,13 @@ export default function CameraScreen() {
 
       {/* recording button */}
       {/* Add voice recognition for detecting start and end of speech */}
-      <View style = {{flex:0, zIndex: 2, position: "absolute", bottom: 20, alignSelf: 'center', backgroundColor: 'transparent', borderRadius: 40, width: 80, height: 80, overflow: "hidden"}}>
+      <View ref = {button_ref} style = {{flex:0, zIndex: 2, position: "absolute", bottom: 20, alignSelf: 'center', backgroundColor: 'transparent', borderRadius: 40, width: 80, height: 80, overflow: "hidden"}}>
         <Pressable
           style = {{padding: 10, paddingTop: 2, alignItems: 'center', borderRadius: 40, width: 80, height: 80, backgroundColor: "yellow", justifyContent: 'center'}}
-          onPress={async () => startConversation()}
+          onPress={async () => {await conversation.startConversation();}}
           android_ripple={{color: "black", foreground: true}}
         >
-          {curFrameProcessor == jpgFrameProcessor && (
+          {curFrameProcessor && (
             <Text style={{fontSize: 40}}>{"\u25A0"}</Text>
           )}
         </Pressable>
