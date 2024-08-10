@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { ConnectionContextProvider } from "@/components/ConnectionContext";
 import { Colors } from "@/constants/Colors";
 
-export default function RootLayout() {
+export default function ChatLayout() {
 
   // TODO: Add settings context
 

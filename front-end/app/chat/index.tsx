@@ -3,10 +3,24 @@ import { Animated, View, Text, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
+import { AuthContext, AuthContextValues } from "@/components/AuthContext";
+import { ConnectionContext, ConnectionContextValues } from "@/components/ConnectionContext";
 
 export default function ChatStart() {
 
+    const {user, setUser}: AuthContextValues = React.useContext(AuthContext)
+    const contextValues: ConnectionContextValues = React.useContext(ConnectionContext)
     const router = useRouter()
+
+    React.useEffect(() => {
+        
+        const event = {
+            type: 'START_SESSION',
+            user_id: user?.uid
+        }
+        
+        contextValues.socket.send(JSON.stringify(event))
+    })
 
 
     return (

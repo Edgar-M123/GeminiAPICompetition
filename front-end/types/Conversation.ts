@@ -7,6 +7,7 @@ import { uploadFiles } from "@/utils/geminiFunctions";
 import React, { SetStateAction, useState } from "react";
 
 import { ConnectionContextValues } from "@/components/ConnectionContext";
+import { FirebaseAuthTypes } from "@react-native-firebase/auth";
 
  
 const meteringThreshold = -45;
@@ -14,7 +15,7 @@ const meteringThreshold = -45;
 class Conversation {
 
     constructor(contextValues: ConnectionContextValues, setCurFrameProcessor: React.Dispatch<SetStateAction<ReadonlyFrameProcessor | undefined>>) {
-        this.contextValues = contextValues
+        this.contextValues = contextValues;
         this.b64Queue = useSharedValue<string[]>([]); // Shared value for queuing b64strings of files for upload. Uploading during worklet is too slow.
         this.jpgFrameProcessor =  useFrameProcessor((frame: Frame) => { // frameprocesser that grabs 1 frame-per-second and converts to b64string, then adds to b64Queue
           'worklet'
@@ -28,9 +29,9 @@ class Conversation {
             } 
             
             })
-          }, [this.b64Queue])
-        this.setCurFrameProcessor = setCurFrameProcessor
-      }
+          }, [this.b64Queue]);
+        this.setCurFrameProcessor = setCurFrameProcessor;
+      };
     
     contextValues: ConnectionContextValues;
     b64Queue: ISharedValue<string[]>;

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import React from "react";
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth'
 import { GoogleSignin } from '@react-native-google-signin/google-signin'
+import { AuthContext, AuthContextValues } from "@/components/AuthContext";
 
 
 GoogleSignin.configure({webClientId: "675224874175-i59v9khkc8qi0u37rfuv04e6a24llck6.apps.googleusercontent.com"})
@@ -35,7 +36,7 @@ export default function Index() {
 
   // Set an initializing state whilst Firebase connects
   const [initializing, setInitializing] = React.useState(true);
-  const [user, setUser] = React.useState<FirebaseAuthTypes.User | null>();
+  const {user, setUser}: AuthContextValues = React.useContext(AuthContext);
   const router = useRouter()
   
   
