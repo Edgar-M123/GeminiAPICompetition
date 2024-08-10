@@ -37,6 +37,9 @@ def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
                     pydantic_dict[key] = type_conversions[pydantic_dict[key]]
                     pydantic_dict["type_"] = pydantic_dict[key]
                     del pydantic_dict[key]
+                elif key == "additionalProperties":
+                    pydantic_dict["properties"] = pydantic_dict[key]
+                    del pydantic_dict[key]
                 else:
                     clean_schema(pydantic_dict[key])
         return pydantic_dict
