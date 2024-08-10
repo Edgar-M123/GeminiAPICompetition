@@ -5,19 +5,17 @@ import { Camera, useCameraDevice, useCameraFormat, ReadonlyFrameProcessor } from
 import * as FileSystem from 'expo-file-system'
 import { Audio, AVPlaybackStatus, AVPlaybackStatusError, AVPlaybackStatusSuccess } from 'expo-av'
 import { useRouter } from "expo-router";
-import auth from "@react-native-firebase/auth";
+import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
 import { ConnectionContext, ConnectionContextValues } from "@/components/ConnectionContext";
 import Conversation from "@/types/Conversation";
 import { Colors } from "@/constants/Colors";
-import { AuthContext, AuthContextValues } from "@/components/AuthContext";
 
 
 export default function CameraScreen() {
   
   const contextValues: ConnectionContextValues = useContext(ConnectionContext) // WebSocket values
-  const {user, setUser}: AuthContextValues = useContext(AuthContext)
 
   const camera_ref = React.useRef<Camera>(null);
   const button_ref = React.useRef<View>(null);
@@ -137,6 +135,22 @@ export default function CameraScreen() {
       console.error(e);
     }
   };
+
+  React.useEffect(() => {
+    
+    const user: FirebaseAuthTypes.User | null = auth().currentUser
+
+    console.log("user: ", user)
+    console.log("user_id: ", user?.uid)
+
+    const event = {
+        type: 'START_SESSION',
+        user_id: user?.uid
+    }
+    
+    contextValues.socket?.send(JSON.stringify(event))
+    console.log("sent START_SESSION request")
+}, [])
 
 
   return (

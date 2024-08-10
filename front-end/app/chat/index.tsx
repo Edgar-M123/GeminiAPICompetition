@@ -8,20 +8,7 @@ import { ConnectionContext, ConnectionContextValues } from "@/components/Connect
 
 export default function ChatStart() {
 
-    const {user, setUser}: AuthContextValues = React.useContext(AuthContext)
-    const contextValues: ConnectionContextValues = React.useContext(ConnectionContext)
     const router = useRouter()
-
-    React.useEffect(() => {
-        
-        const event = {
-            type: 'START_SESSION',
-            user_id: user?.uid
-        }
-        
-        contextValues.socket.send(JSON.stringify(event))
-    })
-
 
     return (
         <View style = {{flex: 1, backgroundColor: Colors.dark.background}}>
