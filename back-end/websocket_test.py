@@ -30,10 +30,6 @@ genai.configure(api_key=GEMINI_API_KEY) # configure google api with your API key
 # model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 model = genai.GenerativeModel(
     model_name='gemini-1.5-pro', 
-    generation_config={
-        "response_mime_type": "application/json",
-        "response_schema": pydantic_to_schema(GeminiResponse.model_json_schema())
-    },
     system_instruction=system_prompt                           
 )
 

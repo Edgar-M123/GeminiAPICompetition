@@ -136,6 +136,16 @@ export default function CameraScreen() {
     }
   };
 
+  React.useEffect(() => {
+
+    const event = {
+      type: "START_SESSION",
+      user_id: auth().currentUser?.uid
+    }
+    
+    contextValues.socket.send(JSON.stringify(event))
+  }, [])
+
 
   return (
 

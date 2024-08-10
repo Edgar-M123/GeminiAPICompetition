@@ -1,16 +1,12 @@
-import firebase_admin
-from firebase_admin import firestore
-from google.cloud.firestore_v1 import CollectionReference, DocumentReference, DocumentSnapshot
+from google.cloud.firestore_v1 import Client
 
 from datetime import date
 
 from websocket_types import Person, GeminiSession
 from pydantic_core import ValidationError
 
-app = firebase_admin.initialize_app()
-db = firestore.client(app)
 
-def add_person(first_name, last_Name, visual_description, likes, dislikes, dob, profile_id = "V2Wcje0VW0BMKCX7tM8K"):
+def add_person(db: Client, first_name, last_Name, visual_description, likes, dislikes, dob, profile_id = "V2Wcje0VW0BMKCX7tM8K"):
     """
     Add a new person to this account's list of family & friends that have appeared on camera.
 
@@ -63,7 +59,7 @@ def add_person(first_name, last_Name, visual_description, likes, dislikes, dob, 
     return True
 
 
-def get_persons(profile_id: str = "V2Wcje0VW0BMKCX7tM8K"):
+def get_persons(db: Client, profile_id: str = "V2Wcje0VW0BMKCX7tM8K"):
     """
     When there is an individual on camera, get the profile information of all individuals associated with this account.
     """

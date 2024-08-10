@@ -6,8 +6,6 @@ from uuid import uuid4
 
 from google.ai.generativelanguage_v1beta import types as genai_types
 
-import firebase_admin
-from firebase_admin import firestore
 from google.cloud.firestore import Client, DocumentReference, DocumentSnapshot, CollectionReference
 from websockets.server import WebSocketServerProtocol
 
@@ -18,8 +16,6 @@ import re
 
 from functools import cached_property
 
-app = firebase_admin.initialize_app()
-db = firestore.client(app)
 
 def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     
@@ -34,7 +30,7 @@ def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     def clean_schema(pydantic_dict: dict) -> dict:
         if isinstance(pydantic_dict, dict):
             for key in list(pydantic_dict.keys()):
-                if key in ["title", "default"]:
+                if key not in ["type_", "format_", "description", "nullable", "enum", "items", "properties", "required"]:
                     del pydantic_dict[key]
                 elif key == "type":
                     pydantic_dict[key] = type_conversions[pydantic_dict[key]]
@@ -71,7 +67,7 @@ class GeminiResponse(BaseModel):
     conversational_response: str = Field(description="Response to the what was said in the video recording.")
     likes: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes that the individual expressed in the video. If nothing was mentioned, return 'None'")
     dislikes: list[str] = Field(default = None, description="OPTIONAL: Possible individual dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
-    behaviours: list[tuple[str,int]] = Field(default = [], description= "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide a set with the name of the behavior and the number of frames the behavior occurred for. Ex: ('hitting self', 5)") # array of behaviour occurences and the number of frames it ocurred for
+    behaviours: dict[str,int] = Field(default = [], description= "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide a set with the name of the behavior and the number of frames the behavior occurred for. Ex: ('hitting self', 5)") # array of behaviour occurences and the number of frames it ocurred for
 
 
 class GeminiSession(BaseModel):
@@ -85,9 +81,9 @@ class GeminiSession(BaseModel):
     set_uploaded_files: set
     audio_recording_task: Task = None
     chat_history: list[tuple[str, str]] = []
-    behaviours: list[tuple[str,int]] = [] # array of behaviour occurences and the number of frames it ocurred for
+    behaviours: dict[str, int] = [] # array of behaviour occurences and the number of frames it ocurred for
 
-    def update_user_session(self):
+    def update_user_session(self, db: Client):
         """
         If session not already added in collection, then create session.
         If session exists, update

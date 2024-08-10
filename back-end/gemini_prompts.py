@@ -13,7 +13,7 @@ Your response must be a JSON object containing the following fields:
 * conversational_response: <type: str, description: "Your direct response to the things said by the child.", required: "Yes">,
 * likes: <type: list[str], description: "OPTIONAL: Things the child likes that were mentioned in the conversation.", required: "No">,
 * dislikes: <type: list[str], description: "OPTIONAL: Things the child DOES NOT like that were mentioned in the conversation.", required: "No">,
-* behaviours: <type: list[tuple[str, int]], description: "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide a set with the name of the behavior and the number of frames the behavior occurred for. Ex: ("hitting self", 5),
+* behaviours: <type: dict[str, int], description: "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide an object with the name of the behavior and the number of frames the behavior occurred for. Ex: {"hitting self", 5}, required: "No">
 
 """
 
