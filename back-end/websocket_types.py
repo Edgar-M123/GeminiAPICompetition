@@ -34,7 +34,7 @@ def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     def clean_schema(pydantic_dict: dict) -> dict:
         if isinstance(pydantic_dict, dict):
             for key in list(pydantic_dict.keys()):
-                if key in ["title", "default", "maxItems"]:
+                if key not in ["type_", "format_", "description", "nullable", "enum", "items", "properties", "required"]:
                     del pydantic_dict[key]
                 elif key == "type":
                     pydantic_dict[key] = type_conversions[pydantic_dict[key]]
