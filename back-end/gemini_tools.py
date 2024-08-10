@@ -1,6 +1,4 @@
-import firebase_admin
-from firebase_admin import firestore
-from google.cloud.firestore_v1 import CollectionReference, DocumentReference, DocumentSnapshot, Client
+from google.cloud.firestore_v1 import Client
 
 from datetime import date
 

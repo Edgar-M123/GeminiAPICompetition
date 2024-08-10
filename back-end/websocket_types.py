@@ -6,8 +6,6 @@ from uuid import uuid4
 
 from google.ai.generativelanguage_v1beta import types as genai_types
 
-import firebase_admin
-from firebase_admin import firestore
 from google.cloud.firestore import Client, DocumentReference, DocumentSnapshot, CollectionReference
 from websockets.server import WebSocketServerProtocol
 
@@ -18,8 +16,6 @@ import re
 
 from functools import cached_property
 
-app = firebase_admin.initialize_app()
-db = firestore.client(app)
 
 def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     
@@ -87,7 +83,7 @@ class GeminiSession(BaseModel):
     chat_history: list[tuple[str, str]] = []
     behaviours: list[tuple[str,int]] = [] # array of behaviour occurences and the number of frames it ocurred for
 
-    def update_user_session(self):
+    def update_user_session(self, db: Client):
         """
         If session not already added in collection, then create session.
         If session exists, update
