@@ -63,7 +63,7 @@ class PromptRequest(BaseModel):
     type: str
     prompt: str
 
-class Behaviour(BaseModel):
+class Behaviour(TypedDict):
     behaviour: str
     frames: int
 
