@@ -30,16 +30,17 @@ def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     def clean_schema(pydantic_dict: dict) -> dict:
         print("cleaning dict to schema: ", pydantic_dict)
         if isinstance(pydantic_dict, dict):
+            if "additionalProperties" in list(pydantic_dict.keys()):
+                pydantic_dict["properties"] = pydantic_dict["additionalProperties"]
+                del pydantic_dict["additionalProperties"]
+                return pydantic_to_schema(pydantic_dict[key])
+
             for key in list(pydantic_dict.keys()):
                 if key in ["title", "default", "maxItems", "minItems"]:
                     del pydantic_dict[key]
                 elif key == "type":
                     pydantic_dict[key] = type_conversions[pydantic_dict[key]]
                     pydantic_dict["type_"] = pydantic_dict[key]
-                    del pydantic_dict[key]
-                elif key == "additionalProperties":
-                    pydantic_dict[key] = pydantic_to_schema(pydantic_dict[key])
-                    pydantic_dict["properties"] = pydantic_dict[key]
                     del pydantic_dict[key]
                 else:
                     clean_schema(pydantic_dict[key])
