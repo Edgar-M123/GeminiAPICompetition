@@ -33,7 +33,7 @@ def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
             if "additionalProperties" in list(pydantic_dict.keys()):
                 pydantic_dict["properties"] = pydantic_dict["additionalProperties"]
                 del pydantic_dict["additionalProperties"]
-                return pydantic_to_schema(pydantic_dict)
+                pydantic_to_schema(pydantic_dict)
 
             for key in list(pydantic_dict.keys()):
                 if key in ["title", "default", "maxItems", "minItems"]:
