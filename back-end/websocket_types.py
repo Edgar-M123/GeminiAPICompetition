@@ -45,6 +45,7 @@ def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
         return pydantic_dict
     
     clean_dict = clean_schema(pydantic_dict=pydantic_dict)
+    print("clean_dict: ", clean_dict)
     new_schema = genai_types.Schema(mapping=clean_dict)
 
     return new_schema
