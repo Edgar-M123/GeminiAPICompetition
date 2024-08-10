@@ -1,5 +1,6 @@
 from pydantic import ValidationError
 
+import asyncio
 import base64
 import time
 import uuid
@@ -75,3 +76,4 @@ async def audio_upload_handler(message, client_session: GeminiSession):
         print(f"GEMINI AUDIO UPLOAD RESPONSE TIME: {t2-t1}")
     
     return None
+

@@ -1,17 +1,13 @@
 import React, { useContext } from "react";
 import { Text, View, TextInput, Pressable, ScrollView, SafeAreaView } from "react-native";
-import Voice from '@react-native-voice/voice'
-import { useFrameProcessor, runAtTargetFps, Frame, Camera, useCameraDevice, useCameraFormat, ReadonlyFrameProcessor } from "react-native-vision-camera";
-import { crop } from "vision-camera-cropper";
-import { useSharedValue } from "react-native-worklets-core";
+import Voice, { SpeechEndEvent, SpeechErrorEvent, SpeechRecognizedEvent, SpeechResultsEvent, SpeechStartEvent, SpeechVolumeChangeEvent } from '@react-native-voice/voice'
+import { Camera, useCameraDevice, useCameraFormat, ReadonlyFrameProcessor } from "react-native-vision-camera";
 import * as FileSystem from 'expo-file-system'
-import { Audio } from 'expo-av'
+import { Audio, AVPlaybackStatus, AVPlaybackStatusError, AVPlaybackStatusSuccess } from 'expo-av'
 import { useRouter } from "expo-router";
 import auth from "@react-native-firebase/auth";
 
 import { getAudioPerms, getCamPerms, getMicPerms } from '@/utils/permissionReqs';
-import { uploadFiles } from "@/utils/geminiFunctions";
-import { checkSpeechEnd, startAudioRecording, stopAudioRecording } from "@/utils/convoFunctions";
 import { ConnectionContext, ConnectionContextValues } from "@/components/ConnectionContext";
 import Conversation from "@/types/Conversation";
 import { Colors } from "@/constants/Colors";
@@ -25,6 +21,8 @@ export default function CameraScreen() {
   const button_ref = React.useRef<View>(null);
   
   const [curFrameProcessor, setCurFrameProcessor] = React.useState<ReadonlyFrameProcessor | undefined>(undefined)
+  const [isTTSPlaying, setIsTTSPlaying] = React.useState<boolean>()
+  const [isSessionActive, setIsSessionActive] = React.useState<boolean>(true)
   let conversation = new Conversation(contextValues, setCurFrameProcessor)
   
 
@@ -34,7 +32,16 @@ export default function CameraScreen() {
     await FileSystem.writeAsStringAsync((FileSystem.cacheDirectory + "tts_audio.mp3"), b64_string, { encoding: FileSystem.EncodingType.Base64 });
 
     console.log("Creating sound from mp3")
-    const sound = await Audio.Sound.createAsync({ uri: (FileSystem.cacheDirectory + "tts_audio.mp3") });
+    const sound = await Audio.Sound.createAsync(
+      { uri: (FileSystem.cacheDirectory + "tts_audio.mp3") }, 
+      {}, 
+      (status: AVPlaybackStatus) => {
+        console.log("AVPlabackStatus isLoaded: ", status.isLoaded);
+        status.isLoaded == true ? console.log("AVPlabackStatus isPlaying: ", status.isPlaying) : null;
+        status.isLoaded == true ? setIsTTSPlaying(status.isPlaying) : setIsTTSPlaying(status.isLoaded);
+      }
+    );
+    await sound.sound.setProgressUpdateIntervalAsync(100)
 
     console.log("Playing sound from mp3")
     await sound.sound.playAsync()
@@ -45,41 +52,89 @@ export default function CameraScreen() {
     // download mp3 files of tts saying generic phrases
     // on GENERATE TEXT call, choose random file and play audio
 
-
-  // TODO: Add Speech
-    // Press button to start session. (DONE)
-    // Every 0.1 seconds, check recording status (recording.getStatusAsync()) (DONE)
-    // if metering in status is below certain volume threshold, then start countdown to stop recording (1-2s) (DONE)
-    // Keep checking through the countdown, in case it was just a pause. (DONE)
-      // if below threshold and countdown still in effect, do nothing (DONE)
-    // outside of active conversation use react native voice to detect speech
-    // upon speech detection, start new conversation
-    
+   
   const device = useCameraDevice('front');
   getCamPerms(device);
   getMicPerms(device);
   getAudioPerms();
 
   const router = useRouter()
-
-  React.useEffect(() => {
-    
-    console.log("effect run")
-    if (contextValues.socketMessage != undefined && contextValues.socketMessage.type == "generate_text_response") {
-      const data = JSON.parse(contextValues.socketMessage.data)
-      console.log('Playing tts')
-      playTTS(data.b64_audio).then(() => console.log("tts done"))
-    }
-
-
-  }, [contextValues.socketMessage])
-
+  
+  // set conversation effect
   React.useEffect(() => {
     console.log("conversation.curFrameProcessor updated. Setting state")
     setCurFrameProcessor(conversation.curFrameProcessor)
     console.log("curFrameProcessor has been set")
 
   }, [conversation.curFrameProcessor])
+  
+  // voice recog config effect
+  React.useEffect(() => {
+    Voice.onSpeechStart = (e: SpeechStartEvent) => {console.log("onSpeechStart: ", e);;};
+    Voice.onSpeechRecognized = (e: SpeechRecognizedEvent) => {console.log("onSpeechRecognized: ", e); };
+    Voice.onSpeechEnd = (e: SpeechEndEvent) => {console.log("onSpeechEnd: ", e);};
+    Voice.onSpeechError = (e: SpeechErrorEvent) => {console.log("onSpeechError: ", e);};
+    Voice.onSpeechResults = (e: SpeechResultsEvent) => {console.log("onSpeechResults: ", e);};
+    Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {console.log("onSpeechPartialResults: ", e); _destroyRecognizer(); conversation.startConversation().then(); };
+    Voice.onSpeechVolumeChanged = (e: SpeechVolumeChangeEvent) => {console.log("onSpeechVolumeChanged: ", e);};
+  }, [])
+
+  // voice recog usecase effect
+  React.useEffect(() => {
+    isSessionActive && !isTTSPlaying && conversation.curFrameProcessor == undefined ? _startRecognizing() : null
+  }, [isSessionActive, isTTSPlaying, conversation.curFrameProcessor])
+
+  // play tts effect
+  React.useEffect(() => {
+    
+    console.log("tts effect run")
+    if (contextValues.socketMessage != undefined && contextValues.socketMessage.type == "generate_text_response") {
+      const data = JSON.parse(contextValues.socketMessage.data);
+      console.log('Playing tts');
+      playTTS(data.b64_audio).then(() => console.log("tts done"));
+    };
+
+  }, [contextValues.socketMessage]);
+
+
+
+  // during tts, start recognizing (DOESNT WORK, STARTS RECOGNIZING TTS)
+  // after tts, start recognizing
+  // when recognized, start conversation and stop recognizing
+  // when conversation done, play tts
+  // repeat
+  const _startRecognizing = async () => {
+    try {
+      await Voice.start('en-US', {EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 5000});
+      console.log('called start');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const _stopRecognizing = async () => {
+    try {
+      await Voice.stop();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const _cancelRecognizing = async () => {
+    try {
+      await Voice.cancel();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const _destroyRecognizer = async () => {
+    try {
+      await Voice.destroy();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
 
   return (

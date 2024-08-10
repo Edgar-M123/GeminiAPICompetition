@@ -1,14 +1,25 @@
 from pydantic import BaseModel, Field, computed_field, GetCoreSchemaHandler, ConfigDict
 from pydantic_core import CoreSchema, core_schema
 from typing_extensions import TypedDict
-from google.ai.generativelanguage_v1beta import types as genai_types
 from datetime import datetime
+from uuid import uuid4
 
+from google.ai.generativelanguage_v1beta import types as genai_types
+
+import firebase_admin
+from firebase_admin import firestore
+from google.cloud.firestore import Client, DocumentReference, DocumentSnapshot, CollectionReference
+from websockets.server import WebSocketServerProtocol
+
+import asyncio
+import json
 from asyncio import Task
 import re
 
 from functools import cached_property
 
+app = firebase_admin.initialize_app()
+db = firestore.client(app)
 
 def pydantic_to_schema(pydantic_dict: dict) -> genai_types.Schema:
     
@@ -60,36 +71,49 @@ class GeminiResponse(BaseModel):
     conversational_response: str = Field(description="Response to the what was said in the video recording.")
     likes: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes that the individual expressed in the video. If nothing was mentioned, return 'None'")
     dislikes: list[str] = Field(default = None, description="OPTIONAL: Possible individual dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
+    behaviours: list[tuple[str,int]] = Field(default = [], description= "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide a set with the name of the behavior and the number of frames the behavior occurred for. Ex: ('hitting self', 5)") # array of behaviour occurences and the number of frames it ocurred for
 
-gemini_response_schema = genai_types.Schema(
-    type_ = genai_types.Type.OBJECT,
-    properties = {
-        "transcript": genai_types.Schema(type_ = genai_types.Type.STRING, description = "The transcript of the audio received in the prompt"),
-        "conversational_response": genai_types.Schema(type_ = genai_types.Type.STRING, description = "Response to the what was said in the video recording."),
-        "likes": genai_types.Schema(
-            type_ = genai_types.Type.ARRAY, 
-            items = genai_types.Schema(type_ = genai_types.Type.STRING),
-            description="OPTIONAL: Possible individual likes that the individual expressed in the video. If nothing was mentioned, return 'None'"
-        ),
-        "dislikes": genai_types.Schema(
-            type_ = genai_types.Type.ARRAY, 
-            items = genai_types.Schema(type_ = genai_types.Type.STRING),
-            description="OPTIONAL: Possible individual dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'"
-        ),
-    },
-    required = ['transcript', 'conversational_response']
-)
 
 class GeminiSession(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    session_id: str
+    user_id: str
+    session_id: str = str(uuid4())
+    session_datetime: datetime = datetime.now()
+    ws_client: WebSocketServerProtocol = Field(exclude=True)
     set_file_ids: set
     set_uploaded_files: set
     audio_recording_task: Task = None
     chat_history: list[tuple[str, str]] = []
+    behaviours: list[tuple[str,int]] = [] # array of behaviour occurences and the number of frames it ocurred for
+
+    def update_user_session(self):
+        """
+        If session not already added in collection, then create session.
+        If session exists, update
+        """
+
+        user_sessions_collection: CollectionReference = db.collection(f"/profiles/{self.user_id}/sessions")
+        session_doc_ref: DocumentReference = user_sessions_collection.document(self.session_id)
+        session_doc_ref.set(self.model_dump())
+
+    async def end_session(self):
+        """
+        End session & update database
+        """
+
+        self.update_user_session()
+
+        event = {
+            "type": "end_session"
+        }
+
+        await self.ws_client.send(json.dumps(event))
+
+    
 
 class Person(BaseModel):
+
     first_name: str
     last_name: str = None
     dob: datetime = None

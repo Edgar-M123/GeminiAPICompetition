@@ -4,13 +4,11 @@ from google.cloud.firestore_v1 import CollectionReference, DocumentReference, Do
 
 from datetime import date
 
-from websocket_types import Person
+from websocket_types import Person, GeminiSession
 from pydantic_core import ValidationError
 
 app = firebase_admin.initialize_app()
-db = firestore.client()
-
-
+db = firestore.client(app)
 
 def add_person(first_name, last_Name, visual_description, likes, dislikes, dob, profile_id = "V2Wcje0VW0BMKCX7tM8K"):
     """
@@ -79,6 +77,16 @@ def get_persons(profile_id: str = "V2Wcje0VW0BMKCX7tM8K"):
     print(persons)
 
     return persons
+
+def end_session_GEMINI(gemini_session: GeminiSession):
+    """
+    If the individual has expressed that they wish to end the conversation, use this function to end the session and save all related data.
+    """
+    gemini_session.end_session()
+
+    return
+
+
 
 
 gemini_tools = [add_person]

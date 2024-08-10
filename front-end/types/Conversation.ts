@@ -8,8 +8,9 @@ import React, { SetStateAction, useState } from "react";
 
 import { ConnectionContextValues } from "@/components/ConnectionContext";
 
+ 
+const meteringThreshold = -45;
 
-  
 class Conversation {
 
     constructor(contextValues: ConnectionContextValues, setCurFrameProcessor: React.Dispatch<SetStateAction<ReadonlyFrameProcessor | undefined>>) {
@@ -30,7 +31,7 @@ class Conversation {
           }, [this.b64Queue])
         this.setCurFrameProcessor = setCurFrameProcessor
       }
-      
+    
     contextValues: ConnectionContextValues;
     b64Queue: ISharedValue<string[]>;
     jpgFrameProcessor: ReadonlyFrameProcessor
@@ -73,10 +74,10 @@ class Conversation {
     } 
 
     checkSpeechEnd(status: Audio.RecordingStatus) {
-        console.log("Recording metering level", status.metering)
+        // console.log("Recording metering level", status.metering)
         
-        if (status.metering && status.metering < -55) {
-            console.log("Metering below -55");
+        if (status.metering && status.metering < meteringThreshold) {
+            console.log("Metering below ", meteringThreshold);
             if (this.audioTimeout == undefined) {
                 console.log("No audioTimeout. Starting end sequence");
                 this.audioTimeout = setTimeout(() => {
@@ -86,7 +87,7 @@ class Conversation {
             };
         
         } else {
-            console.log("Metering not below -55");
+            console.log("Metering not below ", meteringThreshold);
             if (this.audioTimeout != undefined) {
                 console.log("Clearing audioTimeout");
                 clearTimeout(this.audioTimeout);
@@ -171,10 +172,10 @@ class Conversation {
           if (result != null) {
             console.log(result.err)
             this.changeFrameProcessor(undefined)
-            return this.curFrameProcessor
+            return;
           } else {
             this.uploadInterval = setInterval(() => {uploadFiles(this.contextValues.socket, this.b64Queue)}, 1000)
-            return this.curFrameProcessor
+            return;
           }
         }
 
@@ -192,10 +193,10 @@ class Conversation {
           if (audioBlob != undefined) {
             console.log("Awaiting audioblob")
             this.sendAudioBlob(audioBlob)
-            return this.curFrameProcessor
+            return;
           } else {
             console.log("Audio blob failed.")
-            return this.curFrameProcessor
+            return;
           }
         }
       }

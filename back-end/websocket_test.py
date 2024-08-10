@@ -70,23 +70,7 @@ async def handler(websocket: WebSocketServerProtocol):
         print(f"Connection started with {client_id}")
 
         SET_CLIENTS.add(websocket)
-
-        session_id = str(uuid.uuid4())
         
-        client_session = GeminiSession( # create client_session
-            session_id=session_id,
-            set_file_ids=set(),
-            set_uploaded_files=set()
-        )
-
-        DICT_CLIENT_SESSIONS[session_id] = client_session
-
-        event = {
-            "type": "session_created",
-            "session_id": client_session.session_id
-        }
-
-        await websocket.send(json.dumps(event)) # returning session id to client
 
         async for message in websocket:
             message = json.loads(message)
@@ -94,6 +78,28 @@ async def handler(websocket: WebSocketServerProtocol):
 
             if message['type'] == "IMG_UPLOAD":
                 asyncio.create_task(img_upload_handler(message, client_session)) # create concurrent task to process & upload image data
+
+            elif message['type'] == 'START_SESSION':
+                
+                user_id = message["user_id"]
+                
+                client_session = GeminiSession( # create client_session
+                    user_id=user_id,
+                    ws_client=websocket,
+                    set_file_ids=set(),
+                    set_uploaded_files=set()
+                )
+
+                DICT_CLIENT_SESSIONS[client_session.session_id] = client_session
+
+                event = {
+                    "type": "session_created",
+                    "session_id": client_session.session_id
+                }
+
+                await websocket.send(json.dumps(event)) # returning session id to client
+
+
 
             elif message['type'] == "AUDIO_UPLOAD":
                 client_session.audio_recording_task = asyncio.create_task(audio_upload_handler(message, client_session)) # create concurrent task but keep it to await
@@ -127,18 +133,16 @@ async def handler(websocket: WebSocketServerProtocol):
                     response_text = response.text
                     t2 = time.perf_counter()
 
-
                     if re.match(r"^```json", response_text):
                         response_text = re.sub(r"^```json", "", response_text)
                         response_text = re.sub(r"```$", "", response_text)
 
-
+                    parsed_dict = json.loads(response_text)
                     try:
-                        parsed_dict = json.loads(response_text)
                         parsed_response = GeminiResponse(**parsed_dict)
-                        response_conversation: str = parsed_response.conversational_response
                     except Exception as exc:
                         print("Error during GeminiResponse creation: ", exc)
+                    response_conversation: str = parsed_response.conversational_response
                     
 
                     try:
@@ -164,6 +168,8 @@ async def handler(websocket: WebSocketServerProtocol):
 
                     client_session.chat_history.append(chat_user)
                     client_session.chat_history.append(chat_ai)
+                    if parsed_response.behaviours:
+                        client_session.behaviours = client_session.behaviours + parsed_response.behaviours
 
                     print(f"Time to generate text: {t2-t1}")
 
