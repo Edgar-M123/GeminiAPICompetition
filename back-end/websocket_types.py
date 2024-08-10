@@ -88,7 +88,7 @@ class GeminiSession(BaseModel):
     set_uploaded_files: set
     audio_recording_task: Task = None
     chat_history: list[tuple[str, str]] = []
-    behaviours: list[tuple[str,int]] = [] # array of behaviour occurences and the number of frames it ocurred for
+    behaviours: dict[str,int] = [] # dict of behaviour occurences and the number of frames it ocurred for
 
     def update_user_session(self, db: Client):
         """
