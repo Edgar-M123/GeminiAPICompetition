@@ -84,7 +84,6 @@ def end_session_GEMINI(gemini_session: GeminiSession):
 
 
 
-
 gemini_tools = [add_person]
 
 

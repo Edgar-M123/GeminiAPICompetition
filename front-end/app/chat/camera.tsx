@@ -90,6 +90,7 @@ export default function CameraScreen() {
     console.log("tts effect run")
     if (contextValues.socketMessage != undefined && contextValues.socketMessage.type == "generate_text_response") {
       const data = JSON.parse(contextValues.socketMessage.data);
+      console.log("gemini text response: ", contextValues.socketMessage)
       console.log('Playing tts');
       playTTS(data.b64_audio).then(() => console.log("tts done"));
     };

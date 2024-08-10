@@ -78,6 +78,10 @@ async def handler(websocket: WebSocketServerProtocol):
             elif message['type'] == 'START_SESSION':
                 
                 user_id = message["user_id"]
+                user_fb = get_user(user_id=user_id, db=db)
+
+                if not user_fb:
+                    add_user(user_id=user_id, db=db)
                 
                 client_session = GeminiSession( # create client_session
                     user_id=user_id,
@@ -166,6 +170,8 @@ async def handler(websocket: WebSocketServerProtocol):
                     client_session.chat_history.append(chat_ai)
                     if parsed_response.behaviours:
                         client_session.behaviours = client_session.behaviours + parsed_response.behaviours
+
+                    client_session.update_user_session(db=db)
 
                     print(f"Time to generate text: {t2-t1}")
 

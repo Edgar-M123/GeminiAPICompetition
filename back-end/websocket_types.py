@@ -79,7 +79,7 @@ class GeminiSession(BaseModel):
     ws_client: WebSocketServerProtocol = Field(exclude=True)
     set_file_ids: set
     set_uploaded_files: set
-    audio_recording_task: Task = None
+    audio_recording_task: Task = Field(exclude=True)
     chat_history: list[tuple[str, str]] = []
     behaviours: dict[str, int] = [] # array of behaviour occurences and the number of frames it ocurred for
 
