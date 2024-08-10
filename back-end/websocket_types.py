@@ -63,16 +63,12 @@ class PromptRequest(BaseModel):
     type: str
     prompt: str
 
-class Behaviour(TypedDict):
-    behaviour: str
-    frames: int
-
 class GeminiResponse(BaseModel):
     transcript: str = Field(description="The transcript of the audio received in the prompt")
     conversational_response: str = Field(description="Response to the what was said in the video recording.")
     likes: list[str] = Field(default = None, description="OPTIONAL: Possible individual likes that the individual expressed in the video. If nothing was mentioned, return 'None'")
     dislikes: list[str] = Field(default = None, description="OPTIONAL: Possible individual dislikes that the individual expressed in the video. If nothing was mentioned, return 'None'")
-    behaviours: list[Behaviour] = Field(default = [], description= "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide a set with the name of the behavior and the number of frames the behavior occurred for. Ex: ('hitting self', 5)") # array of behaviour occurences and the number of frames it ocurred for
+    behaviours: dict[str,int] = Field(default = [], description= "OPTIONAL: Negative repetitive behaviors exhibited by the child such as hitting or ticking. Provide a dict with the name of the behavior and the number of frames the behavior occurred for. Ex: {'hitting self': 5}") # array of behaviour occurences and the number of frames it ocurred for
 
 
 class GeminiSession(BaseModel):
