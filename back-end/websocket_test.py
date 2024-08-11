@@ -174,7 +174,8 @@ async def handler(websocket: WebSocketServerProtocol):
                     client_session.chat_history.append(chat_ai)
 
                     print("Adding behaviours")
-                    if parsed_response.behaviours != None:
+                    if parsed_response.behaviours and parsed_response.behaviours != None:
+                        print(parsed_response.behaviours)
                         for key in parsed_response.behaviours.keys():
                             if key not in client_session.behaviours.keys():
                                 client_session.behaviours[key] = [parsed_response[key]]
