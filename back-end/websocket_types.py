@@ -100,13 +100,18 @@ class GeminiSession(BaseModel):
         print("Updating user sessions on firebase")
 
         print(f"creating/updating session {self.session_id}")
-        session_doc_ref: DocumentReference = user_sessions_collection.document(self.session_id)
-        session_doc_ref.set({
+
+        data = {
             "session_id": self.session_id,
             "session_date": self.session_datetime,
             "chat_history": self.chat_history,
             "behaviours": self.behaviours,
-            })
+        }
+
+        print("Data to add: ", data)
+
+        session_doc_ref: DocumentReference = user_sessions_collection.document(self.session_id)
+        session_doc_ref.set(data)
         print("Done updating session")
 
     async def end_session(self):
