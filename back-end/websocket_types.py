@@ -95,7 +95,7 @@ class GeminiSession(BaseModel):
         if "sessions" not in [x.id for x in user_collections]:
             user_sessions_collection = user_doc_ref.collection("sessions")
         else:
-            user_sessions_collection: CollectionReference = db.collection(f"/profiles/{self.user_id}/sessions/")
+            user_sessions_collection: CollectionReference = db.collection(f"profiles/{self.user_id}/sessions")
 
         print("Updating user sessions on firebase")
 
@@ -104,7 +104,8 @@ class GeminiSession(BaseModel):
         session_doc_ref.set({
             "session_id": self.session_id,
             "session_date": self.session_datetime,
-
+            "chat_history": self.chat_history,
+            "behaviours": self.behaviours,
             })
         print("Done updating session")
 
