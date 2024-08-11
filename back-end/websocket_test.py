@@ -82,6 +82,7 @@ async def handler(websocket: WebSocketServerProtocol):
 
                 if not user_fb:
                     add_user(user_id=user_id, db=db)
+                print("Found user in database")
                 
                 client_session = GeminiSession( # create client_session
                     user_id=user_id,

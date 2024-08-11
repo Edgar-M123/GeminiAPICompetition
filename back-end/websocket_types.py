@@ -89,9 +89,13 @@ class GeminiSession(BaseModel):
         If session exists, update
         """
 
-        user_sessions_collection: CollectionReference = db.collection(f"/profiles/{self.user_id}/sessions")
+        print("Updating user sessions on firebase")
+        user_sessions_collection: CollectionReference = db.collection(f"/profiles/{self.user_id}/sessions/")
+
+        print(f"creating/updating session {self.session_id}")
         session_doc_ref: DocumentReference = user_sessions_collection.document(self.session_id)
         session_doc_ref.set(self.model_dump())
+        print("Done updating session")
 
     async def end_session(self):
         """

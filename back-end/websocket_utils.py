@@ -96,18 +96,21 @@ def add_user(user_id: str , db: Client):
     profiles_collection.document(user_id).set({"exists": True, "added_time": datetime.now()})
 
     print("Creating sessions and persons collections")
-    profiles_collection.document(user_id).collection("sessions")
-    profiles_collection.document(user_id).collection("persons")
+    session_collection: CollectionReference = profiles_collection.document(user_id).collection("sessions")
+    session_collection.document("0").set({"exists": True})
+    
+    person_collection: CollectionReference = profiles_collection.document(user_id).collection("persons")
+    person_collection.document("0").set({"exists": True})
 
     print("Done adding user ", user_id)
 
 
-def update_session(session: GeminiSession, db: Client):
+# def update_session(session: GeminiSession, db: Client):
 
-    print(f"Updating session {session.session_id} for user {session.user_id}")
+#     print(f"Updating session {session.session_id} for user {session.user_id}")
 
-    user_collection: CollectionReference = db.collection(f"profiles/{session.user_id}/sessions")
-    user_collection.document(session.session_id).set(GeminiSession.model_dump_json())
+#     user_collection: CollectionReference = db.collection(f"profiles/{session.user_id}/sessions")
+#     user_collection.document(session.session_id).set(GeminiSession.model_dump_json())
 
-    print(f"Done updating session {session.session_id} for user {session.user_id}")
+#     print(f"Done updating session {session.session_id} for user {session.user_id}")
 
