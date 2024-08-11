@@ -53,6 +53,7 @@ def get_tts_response(text: str, client = tts_client):
 SET_SESSION_IDS: set[str] = set()
 SET_CLIENTS: set[WebSocketServerProtocol] = set()
 DICT_CLIENT_SESSIONS: dict[str, GeminiSession] = {}
+BACKGROUND_TASKS = set()
 
 async def handler(websocket: WebSocketServerProtocol):
         
@@ -73,7 +74,9 @@ async def handler(websocket: WebSocketServerProtocol):
             print("Received message of type: ", message['type'])
 
             if message['type'] == "IMG_UPLOAD":
-                asyncio.create_task(img_upload_handler(message, client_session)) # create concurrent task to process & upload image data
+                task = asyncio.create_task(img_upload_handler(message, client_session)) # create concurrent task to process & upload image data
+                BACKGROUND_TASKS.add(task)
+                task.add_done_callback(BACKGROUND_TASKS.discard)
 
             elif message['type'] == 'START_SESSION':
                 
@@ -117,7 +120,7 @@ async def handler(websocket: WebSocketServerProtocol):
                 print("PROMPT TEXT: ", prompt)
 
                 contents = [*client_session.set_uploaded_files, prompt]
-                print(contents)
+                print("Contents: ", contents)
 
                 print("Sent response...")
 
