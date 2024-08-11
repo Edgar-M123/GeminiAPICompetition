@@ -81,7 +81,7 @@ class GeminiSession(BaseModel):
     set_uploaded_files: set = Field(exclude=True)
     audio_recording_task: Task = Field(default = None, exclude=True)
     chat_history: list[tuple[str, str]] = []
-    behaviours: dict[str, int] = {} # array of behaviour occurences and the number of frames it ocurred for
+    behaviours: dict[str, list[int]] = {} # array of behaviour occurences and the number of frames it ocurred for
 
     def update_user_session(self, db: Client):
         """
@@ -101,7 +101,11 @@ class GeminiSession(BaseModel):
 
         print(f"creating/updating session {self.session_id}")
         session_doc_ref: DocumentReference = user_sessions_collection.document(self.session_id)
-        session_doc_ref.set(self.model_dump())
+        session_doc_ref.set({
+            "session_id": self.session_id,
+            "session_date": self.session_datetime,
+
+            })
         print("Done updating session")
 
     async def end_session(self):
