@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, Pressable, View, Text } from "react-native";
+import { FlatList, Pressable, View, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SettingsListItem } from "@/components/SettingsComponents";
 import { useRouter } from "expo-router";
@@ -55,9 +55,11 @@ export default function Settings() {
                 />
             </View>
             {contextValues.socketMessage.type == "generate_summary_response" && <View style = {{position: "absolute", bottom: 10, left: 0, right: 0, elevation: 5, zIndex: 2, height: 400, borderRadius: 10, backgroundColor: "white", margin: 10}}>
-                <Text>
-                    {}
-                </Text>
+                <ScrollView>
+                    <Text>
+                        {contextValues.socketMessage.data}
+                    </Text>
+                </ScrollView>
             </View>}
             
         </View>
