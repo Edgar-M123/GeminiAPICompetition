@@ -178,7 +178,7 @@ async def handler(websocket: WebSocketServerProtocol):
                         print(parsed_response.behaviours)
                         for key in parsed_response.behaviours.keys():
                             if key not in client_session.behaviours.keys():
-                                client_session.behaviours[key] = [parsed_response[key]]
+                                client_session.behaviours[key] = [parsed_response.behaviours[key]]
                             else:
                                 client_session.behaviours[key].append(parsed_response.behaviours[key])
 
