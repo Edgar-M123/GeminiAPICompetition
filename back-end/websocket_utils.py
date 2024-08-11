@@ -107,7 +107,8 @@ def add_user(user_id: str , db: Client):
 def get_session_summaries(db: Client, user_id: str, model: genai.GenerativeModel):
 
     user_sessions_collection: CollectionReference = db.collection(f"profiles/{user_id}/sessions")
-    user_sessions_docs = user_sessions_collection.get()
+    user_sessions_docs_refs: list[DocumentSnapshot] = user_sessions_collection.get()
+    user_sessions_docs = [x.to_dict() for x in user_sessions_docs_refs]
 
     print("Docs from user sessions collection: ", user_sessions_docs)
 
