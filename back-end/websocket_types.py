@@ -89,8 +89,15 @@ class GeminiSession(BaseModel):
         If session exists, update
         """
 
+        user_doc_ref: DocumentReference = db.collection(f"profiles").document(self.user_id)
+        user_collections: list[CollectionReference] = [x for x in user_doc_ref.collections()]
+
+        if "sessions" not in [x.id for x in user_collections]:
+            user_sessions_collection = user_doc_ref.collection("sessions")
+        else:
+            user_sessions_collection: CollectionReference = db.collection(f"/profiles/{self.user_id}/sessions/")
+
         print("Updating user sessions on firebase")
-        user_sessions_collection: CollectionReference = db.collection(f"/profiles/{self.user_id}/sessions/")
 
         print(f"creating/updating session {self.session_id}")
         session_doc_ref: DocumentReference = user_sessions_collection.document(self.session_id)
