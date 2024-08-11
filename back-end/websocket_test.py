@@ -74,9 +74,22 @@ async def handler(websocket: WebSocketServerProtocol):
             print("Received message of type: ", message['type'])
 
             if message['type'] == "IMG_UPLOAD":
+                print("Uploading image")
                 task = asyncio.create_task(img_upload_handler(message, client_session)) # create concurrent task to process & upload image data
                 BACKGROUND_TASKS.add(task)
                 task.add_done_callback(BACKGROUND_TASKS.discard)
+
+            elif message['type'] == "GENERATE_SUMMARY":
+
+                user_id = message["user_id"]
+                summary = get_session_summaries(db=db, user_id=user_id, model=model)
+
+                event = {
+                    "type": "generate_summary_response",
+                    "data": summary
+                }
+
+                await websocket.send(json.dumps(event))
 
             elif message['type'] == 'START_SESSION':
                 
@@ -102,8 +115,6 @@ async def handler(websocket: WebSocketServerProtocol):
                 }
 
                 await websocket.send(json.dumps(event)) # returning session id to client
-
-
 
             elif message['type'] == "AUDIO_UPLOAD":
                 client_session.audio_recording_task = asyncio.create_task(audio_upload_handler(message, client_session)) # create concurrent task but keep it to await

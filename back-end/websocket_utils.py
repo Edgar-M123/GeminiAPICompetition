@@ -104,13 +104,23 @@ def add_user(user_id: str , db: Client):
 
     print("Done adding user ", user_id)
 
+def get_session_summaries(db: Client, user_id: str, model: genai.GenerativeModel):
 
-# def update_session(session: GeminiSession, db: Client):
+    user_sessions_collection: CollectionReference = db.collection(f"profiles/{user_id}/sessions")
+    user_sessions_docs = user_sessions_collection.get()
 
-#     print(f"Updating session {session.session_id} for user {session.user_id}")
+    print("Docs from user sessions collection: ", user_sessions_docs)
 
-#     user_collection: CollectionReference = db.collection(f"profiles/{session.user_id}/sessions")
-#     user_collection.document(session.session_id).set(GeminiSession.model_dump_json())
+    prompt = "The following is data from several sessions between an individual and an AI autism therapist. Summarize some of the topics covered in the chat histories and some of the behaviours exhibited by the individuals."
+    sessions_json = json.dumps(user_sessions_docs)
 
-#     print(f"Done updating session {session.session_id} for user {session.user_id}")
+    final_contents = f"{prompt}\n\n{sessions_json}"
+
+    print("Sending request to generate summary")
+    response = model.generate_content(contents=[final_contents])
+
+    print("Summary response: ", response.text)
+    return response.text
+
+
 

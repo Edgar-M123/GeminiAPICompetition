@@ -4,7 +4,7 @@ import { useSharedValue, ISharedValue } from "react-native-worklets-core";
 import { Audio } from 'expo-av'
 import { getCamPerms, getAudioPerms } from "@/utils/permissionReqs";
 import { uploadFiles } from "@/utils/geminiFunctions";
-import React, { SetStateAction, useState } from "react";
+import React, { ImgHTMLAttributes, SetStateAction, useState } from "react";
 
 import { ConnectionContextValues } from "@/components/ConnectionContext";
 
@@ -12,35 +12,6 @@ import { ConnectionContextValues } from "@/components/ConnectionContext";
 const meteringThreshold = -45;
 
 class Conversation {
-
-    constructor(contextValues: ConnectionContextValues, setCurFrameProcessor: React.Dispatch<SetStateAction<ReadonlyFrameProcessor | undefined>>) {
-        this.contextValues = contextValues
-        this.b64Queue = useSharedValue<string[]>([]); // Shared value for queuing b64strings of files for upload. Uploading during worklet is too slow.
-        this.jpgFrameProcessor =  useFrameProcessor((frame: Frame) => { // frameprocesser that grabs 1 frame-per-second and converts to b64string, then adds to b64Queue
-          'worklet'
-          runAtTargetFps(1, () => {
-            'worklet'
-            const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
-            const result_b64 = result_frame.base64
-            if (result_b64 != undefined) {
-              console.log("\nFRAME_PROCESSOR| pushing array...")
-              this.b64Queue.value.push(result_b64)
-            } 
-            
-            })
-          }, [this.b64Queue])
-        this.setCurFrameProcessor = setCurFrameProcessor
-      }
-    
-    contextValues: ConnectionContextValues;
-    b64Queue: ISharedValue<string[]>;
-    jpgFrameProcessor: ReadonlyFrameProcessor
-    curFrameProcessor: ReadonlyFrameProcessor | undefined;
-    setCurFrameProcessor: React.Dispatch<SetStateAction<ReadonlyFrameProcessor | undefined>>;
-    audioRecording: Audio.Recording | undefined;
-    uploadInterval: NodeJS.Timeout | undefined;
-    checkSpeechInterval: NodeJS.Timeout | undefined;
-    audioTimeout: NodeJS.Timeout | undefined;
     recordingOptions: Audio.RecordingOptions = {
         isMeteringEnabled: true,
         android: {
@@ -68,12 +39,8 @@ class Conversation {
         },
       };
     
-    changeFrameProcessor(fp: ReadonlyFrameProcessor | undefined) {
-      this.setCurFrameProcessor(fp)
-      this.curFrameProcessor = fp
-    } 
 
-    checkSpeechEnd(status: Audio.RecordingStatus) {
+    checkSpeechEnd(status: Audio.RecordingStatus, b64queue: ISharedValue<string[]>) {
         // console.log("Recording metering level", status.metering)
         
         if (status.metering && status.metering < meteringThreshold) {
@@ -97,7 +64,7 @@ class Conversation {
         };
     };
     
-    async startAudioRecording() {
+    async startAudioRecording(b64queue: ISharedValue<string[]>) {
       
         try {
             console.log("AUDIO RECORDING: Getting permissions...");
@@ -109,7 +76,7 @@ class Conversation {
             console.log("AUDIO RECORDING: Permissions good.");
             
             console.log("AUDIO RECORDING: Starting recording audio...");
-            const { recording } = await Audio.Recording.createAsync(this.recordingOptions, (status) => {this.checkSpeechEnd(status)}, 100);
+            const { recording } = await Audio.Recording.createAsync(this.recordingOptions, (status) => {this.checkSpeechEnd(status, b64queue)}, 100);
             this.audioRecording = recording;
             console.log("AUDIO RECORDING: Audio recorded started successfully.");
         } catch (err) {
@@ -162,19 +129,35 @@ class Conversation {
     
 
     async startConversation() {
-        // start convo
-        if (this.curFrameProcessor == undefined) {
+      // start convo
+      if (this.curFrameProcessor == undefined) {
+        
+        let b64queue = useSharedValue<string[]>([])
+        const jpgFrameProcessor =  useFrameProcessor((frame: Frame) => { // frameprocesser that grabs 1 frame-per-second and converts to b64string, then adds to b64Queue
+          'worklet'
+          runAtTargetFps(1, () => {
+            'worklet'
+            const result_frame = crop(frame, {includeImageBase64:true,saveAsFile:false})
+            const result_b64 = result_frame.base64
+            if (result_b64 != undefined) {
+              console.log("\nFRAME_PROCESSOR| pushing array...")
+              b64queue.value.push(result_b64)
+            } 
+            
+            })
+        }, [b64queue])
+
           console.log("Starting Conversation")
-          this.changeFrameProcessor(this.jpgFrameProcessor) // set frame processor to start saving frames
+          this.changeFrameProcessor(jpgFrameProcessor) // set frame processor to start saving frames
           this.contextValues.socket.send(JSON.stringify({type: "message",  data: "REC_STARTED"})); // send message to ws
-          const result = await this.startAudioRecording() // try to start audio recording.
+          const result = await this.startAudioRecording(b64queue) // try to start audio recording.
           
           if (result != null) {
             console.log(result.err)
             this.changeFrameProcessor(undefined)
             return;
           } else {
-            this.uploadInterval = setInterval(() => {uploadFiles(this.contextValues.socket, this.b64Queue)}, 1000)
+            this.uploadInterval = setInterval(() => {uploadFiles(this.contextValues.socket, b64queue)}, 1000)
             return;
           }
         }

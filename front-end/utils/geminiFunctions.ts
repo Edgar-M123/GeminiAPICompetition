@@ -70,6 +70,7 @@ export function uploadFiles(ws: WebSocket, b64Queue: ISharedValue<string[]>): vo
 
     console.log("\nGEMINI_UPLOADFILE| WebSocket: ", ws)
     console.log("\nGEMINI_UPLOADFILE| Sending new file to ws...");
+    console.log("b64Queue: ", b64Queue.value)
 
     if (b64Queue.value != undefined && b64Queue.value.length > 0) {
 
