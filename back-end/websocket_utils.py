@@ -112,8 +112,12 @@ def get_session_summaries(db: Client, user_id: str, model: genai.GenerativeModel
 
     print("Docs from user sessions collection: ", user_sessions_docs)
 
-    prompt = "The following is data from several sessions between an individual and an AI autism therapist. Summarize some of the topics covered in the chat histories and some of the behaviours exhibited by the individuals."
-    sessions_json = json.dumps(user_sessions_docs)
+    prompt = """
+    The following is data from several sessions between an individual and an AI autism therapist. 
+    Summarize some of the topics covered in the chat histories and some of the behaviours exhibited by the individuals.
+    """
+
+    sessions_json = str(user_sessions_docs)
 
     final_contents = f"{prompt}\n\n{sessions_json}"
 

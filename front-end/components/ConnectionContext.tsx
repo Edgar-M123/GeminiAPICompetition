@@ -15,6 +15,7 @@ export const ConnectionContextProvider = ({children}: any) => {
     const socket_ref = useRef<WebSocket>();
     const [socket, setSocket] = React.useState<WebSocket>();
     const [socketMessage, setSocketMessage] = React.useState<object>();
+    const [isConnected, setIsConnected] = React.useState<boolean>(false);
 
 
 
@@ -25,10 +26,12 @@ export const ConnectionContextProvider = ({children}: any) => {
         socket_ref.current.addEventListener("open", (ev) => {
             console.log("Connected to websocket on ", SERVER_URL, ev);
             socket_ref.current?.send(JSON.stringify({type: "message", data: "Accessing server from ASD Support App."}));
+            setIsConnected(true)
         });
         
         socket_ref.current.addEventListener("close", (ev) => {
             console.log("Websocket connection closed: ", ev)
+            setIsConnected(false)
         });
 
         socket_ref.current.addEventListener('error', (ev) => {
@@ -56,7 +59,7 @@ export const ConnectionContextProvider = ({children}: any) => {
     }, [])
     
     return (
-        <ConnectionContext.Provider value={{socket, socketMessage, setSocketMessage}}>
+        <ConnectionContext.Provider value={{socket, socketMessage, setSocketMessage, isConnected}}>
             {children}
         </ConnectionContext.Provider>
     )
@@ -65,5 +68,6 @@ export const ConnectionContextProvider = ({children}: any) => {
 export interface ConnectionContextValues {
     socket: WebSocket,
     socketMessage: SocketMessage,
-    setSocketMessage: React.Dispatch<SetStateAction<SocketMessage>>
+    setSocketMessage: React.Dispatch<SetStateAction<SocketMessage>>,
+    isConnected: boolean
 }

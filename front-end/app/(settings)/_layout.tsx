@@ -14,6 +14,7 @@ export default function SettingsRoot() {
         }}
         >
             <Stack.Screen name='settings' options={{title: "Settings"}} />
+            <Stack.Screen name='profile_settings' options={{title: "Profile"}} />
         </Stack>
     )
 

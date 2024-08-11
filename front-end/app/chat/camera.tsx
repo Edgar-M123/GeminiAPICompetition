@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { Text, View, TextInput, Pressable, ScrollView, SafeAreaView } from "react-native";
+import { Text, View, TextInput, Pressable, ScrollView, SafeAreaView, Image } from "react-native";
 import Voice, { SpeechEndEvent, SpeechErrorEvent, SpeechRecognizedEvent, SpeechResultsEvent, SpeechStartEvent, SpeechVolumeChangeEvent } from '@react-native-voice/voice'
 import { Frame, Camera, useCameraDevice, useCameraFormat, ReadonlyFrameProcessor, useFrameProcessor, runAtTargetFps } from "react-native-vision-camera";
 import * as FileSystem from 'expo-file-system'
@@ -245,7 +245,7 @@ async function startConversation(uploadInterval: NodeJS.Timeout | undefined) {
         style = {{flex: 0, alignItems: 'center', justifyContent: 'center', zIndex: 2, position: "absolute", top: 20, right: 20, width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.dark.background}}
         onPress={() => {router.push("/chat/settings")}}
       >
-        <Text style={{color: 'white'}}>set</Text>
+        <Image source={require("../../assets/images/settings.png")} style={{height: 20, width: 20, tintColor: "white"}}/>
       </Pressable>
 
       {/* signout button */}
@@ -253,7 +253,7 @@ async function startConversation(uploadInterval: NodeJS.Timeout | undefined) {
         style = {{flex: 0, alignItems: 'center', justifyContent: 'center', zIndex: 2, position: "absolute", top: 20, right: 70, width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.dark.background}}
         onPress={() => {auth().signOut().then(() => {console.log('User signed out!'); router.replace("/");})}}
       >
-        <Text style={{color: 'white'}}>out</Text>
+        <Image source={require("../../assets/images/logout.png")} style={{height: 20, width: 20, tintColor: "white"}}/>
       </Pressable>
 
       {/* camera */}

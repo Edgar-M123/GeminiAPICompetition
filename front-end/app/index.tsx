@@ -22,11 +22,14 @@ async function onGoogleButtonPress() {
 
 function GoogleSignIn() {
   return (
-    <Pressable
-      onPress={() => onGoogleButtonPress().then(() => console.log('Signed in with Google!'))}
-    >
-      <Text>Google Sign-In</Text>
-    </Pressable>
+    <View style ={{height: 100, backgroundColor: 'gold', padding: 10, borderRadius: 10, width: 300, justifyContent: 'center'}}>
+      <Pressable
+      style = {{flex: 1, alignItems: 'center', justifyContent: 'center'}}
+        onPress={() => onGoogleButtonPress().then(() => console.log('Signed in with Google!'))}
+      >
+        <Text>Sign in with GOOGLE</Text>
+      </Pressable>
+    </View>
   )
 }
 
@@ -54,8 +57,8 @@ export default function Index() {
 
   if (user == null) {
     return (
-      <View style={{flex: 1, borderWidth: 1}}>
-        <Text>Login</Text>
+      <View style={{flex: 1, alignSelf: 'center', alignItems: 'center', justifyContent: 'center'}}>
+        <Text style={{color: "black", margin:10, fontSize: 30}}>Login</Text>
         <GoogleSignIn />
       </View>
     );
