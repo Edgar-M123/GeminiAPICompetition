@@ -16,7 +16,9 @@ To run this app locally, clone the repo, install the above software, and run the
 3. run `npx expo run:android --device`, and select the device of your choice (can be Android Studio emulator or a phone connected via USB.
 4. The app should build and open on your device!
 
-Once you're in the app, press on the login button and log into your google account.
+Once you're in the app, press on the login button and log into your Google account.
+
+You're in the app once you see the Welcome! screen.
 
 ### Features to test
 
