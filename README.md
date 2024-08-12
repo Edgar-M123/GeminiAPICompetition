@@ -3,7 +3,7 @@
 ### Hello!
 
 ### Pre-requisites
-This app was coded using Windos 10 with the following frameworks and software.
+This app was coded using Windows 10 with the following frameworks and software.
 - JDK 17
 - Android Studio Jellyfish 2023.3.1
 - React Native version 0.74.5
@@ -16,7 +16,9 @@ To run this app locally, clone the repo, install the above software, and run the
 3. run `npx expo run:android --device`, and select the device of your choice (can be Android Studio emulator or a phone connected via USB.
 4. The app should build and open on your device!
 
-Once you're in the app, press on the login button and log into your google account.
+Once you're in the app, press on the login button and log into your Google account.
+
+You're in the app once you see the Welcome! screen.
 
 ### Features to test
 
