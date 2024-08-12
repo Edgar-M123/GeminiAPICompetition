@@ -3,7 +3,7 @@
 ### Hello!
 
 ### Pre-requisites
-This app was coded using Windos 10 with the following frameworks and software.
+This app was coded using Windows 10 with the following frameworks and software.
 - JDK 17
 - Android Studio Jellyfish 2023.3.1
 - React Native version 0.74.5
