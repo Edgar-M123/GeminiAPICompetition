@@ -12,9 +12,12 @@ This app was coded using Windows 10 with the following frameworks and software.
 ### Start-up Steps
 To run this app locally, clone the repo, install the above software, and run the code in expo with the following steps:
 1. In a terminal go into the front-end folder (e.g. C:/app_folder_name/front-end/)
-2. run `npm install` and `expo install`
-3. run `npx expo run:android --device`, and select the device of your choice (can be Android Studio emulator or a phone connected via USB.
-4. The app should build and open on your device!
+2. run `npm install`
+3. run `npx expo install`
+4. run `npx patch-package`
+5. run `npx expo prebuild --clean`
+6. run `npx expo run:android --device`, and select the device of your choice (can be Android Studio emulator or a phone connected via USB.
+7. The app should build and open on your device!
 
 Once you're in the app, press on the login button and log into your Google account.
 
