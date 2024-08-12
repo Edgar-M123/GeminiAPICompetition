@@ -30,7 +30,7 @@ To run this app locally, clone the repo, install the above software, and run the
 1. Once you're in the app, press on the login button and log into your Google account. That should take you to the Welcome! screen.
 2. On the Welcome! screen, you may see a yellow text that says "Connecting!". Wait for this to disappear and for a waving hand to appear. 
 3. Once the hand has appeared, tap on it to go to the next screen.
-4. On the Camera screen, you will be asked to provide Camera and Microphone permissions. If after providing these permissinos, the screen is blank (you dont see the camera), then just go back to the Welcome screen and click the hand again, or restart the app.
+4. On the Camera screen, you will be asked to provide Camera and Microphone permissions. If after providing these permissions, the screen is blank (you dont see the camera), then just go back to the Welcome screen and click the hand again, or restart the app.
 
 #### Conversational capabilities
 Press the yellow button to start a message! You can talk and show your surroundings. 
