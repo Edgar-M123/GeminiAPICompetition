@@ -33,15 +33,16 @@ To run this app locally, clone the repo, install the above software, and run the
 4. On the Camera screen, you will be asked to provide Camera and Microphone permissions. If after providing these permissions, the screen is blank (you dont see the camera), then just go back to the Welcome screen and click the hand again, or restart the app.
 
 #### Conversational capabilities
-Press the yellow button to start a message! You can talk and show your surroundings. 
-1 frame will be uploaded per second to Gemini. 
-Once you stop the message (by pressing the stop button), your audio will be uploaded. After a few seconds, Gemini will respond back to your message.
+1. Press the yellow button to start a message! You can talk and show your surroundings. 1 frame will be uploaded per second to Gemini. 
+2. When done your message, press the stop button Your audio will be uploaded. Please wait a few seconds, and Gemini will respond back to your message verbally.
 You can continue sending messages and Gemini will remember your conversation.
 
 #### Behavioural Awareness
 If you do any abnormal vocal or physical behaviours, Gemini will take note and store it in your profile.
 
 #### Generate session summary
-On the camera screen, press the settings on the top right.
-In the settings screen, you can press the Generate Summary button to get a summary of the topics of conversations and behaviours displayed throughout your various sessions with Gemini. These sessions are stored in Firestore meaning they are carried over between sessions, even if the app is closed.
+1. On the camera screen, press the settings on the top right.
+2. In the settings screen, you can press the Generate Summary button.
+3. Wait a few seconds, and a summary of the topics of conversations and behaviours displayed throughout your various sessions with Gemini will be displayed on the bottom.
+These sessions are stored in Firestore meaning they are carried over between sessions, even if the app is closed.
 
